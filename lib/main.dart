@@ -4,8 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:path/path.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+
+Color sC = Colors.blue;
 
 void main() async {
   sqfliteFfiInit();
@@ -68,7 +71,7 @@ class MyApp extends StatelessWidget {
 
 class MainProvider extends ChangeNotifier {
   bool _isDarkMode = true;
-  Color _seedColor = Colors.purple;
+  Color _seedColor = sC;
   String _dlMusicDir = "";
   Duration sleepTimerDuration = const Duration(hours: 1);
 

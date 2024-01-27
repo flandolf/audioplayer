@@ -41,6 +41,9 @@ Flutter audio player with YouTube download support.
 * [ ] Metadata support
 * [ ] File Sorting (Artist, Album, etc.)
 
+## Bugs
+* [ ] Theme doesn't save across restarts
+
 ## Screenshots
 ![img.png](img.png)
 ![img_1.png](img_1.png)

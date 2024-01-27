@@ -29,15 +29,19 @@ class _HomeState extends State<Home> {
   @override
   void initState() {
     super.initState();
-    loadMusicDir();
+    loadProviders();
     updatePlaylist();
   }
 
-  Future<void> loadMusicDir() async {
+  Future<void> loadProviders() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final String? directory = prefs.getString('directory');
-    if (directory != null && context.mounted) {
+    final int? seedColor = prefs.getInt('seedColor');
+    if (directory != null && seedColor != null && context.mounted) {
       Provider.of<MainProvider>(context, listen: false).dlMusicDir = directory;
+      Provider.of<MainProvider>(context, listen: false).seedColor = Color(seedColor);
+      Provider.of<MainProvider>(context, listen: false).isDarkMode = prefs.getBool('isDarkMode') ?? false;
+      Provider.of<MainProvider>(context, listen: false).notifyListeners();
     }
   }
 
@@ -98,6 +102,7 @@ class _HomeState extends State<Home> {
   }
 
   Future<void> addUrl(BuildContext context) async {
+    final tEC = TextEditingController();
     await showDialog<String>(
       context: context,
       builder: (context) {
@@ -108,6 +113,7 @@ class _HomeState extends State<Home> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
+                  controller: tEC,
                   decoration: const InputDecoration(
                     border: UnderlineInputBorder(),
                     labelText: 'URL',
@@ -122,6 +128,13 @@ class _HomeState extends State<Home> {
             actions: [
               TextButton(
                 onPressed: () {
+                  downloadLink(tEC.value.text);
+                  Navigator.of(context).pop();
+                },
+                child: const Text('Submit'),
+              ),
+              TextButton(
+                onPressed: () {
                   Navigator.of(context).pop();
                 },
                 child: const Text('Cancel'),
@@ -134,6 +147,7 @@ class _HomeState extends State<Home> {
   }
 
   Future<void> addPlaylistUrl(BuildContext context) async {
+    final tEC = TextEditingController();
     showDialog(
         context: context,
         builder: (context) {
@@ -147,22 +161,22 @@ class _HomeState extends State<Home> {
                     border: UnderlineInputBorder(),
                     labelText: 'URL',
                   ),
-                  onSubmitted: (value) async {
-                    var playlist = await YoutubeExplode().playlists.get(value);
-                    var playlistName = playlist.title;
-                    await for (var video
-                        in YoutubeExplode().playlists.getVideos(playlist.id)) {
-                      downloadLink(video.url, playlist: playlistName);
-                    }
-                    if (context.mounted) Navigator.pop(context);
+                  controller: tEC,
+                  onSubmitted: (value) {
+                    downloadPlaylist(value);
+                    Navigator.of(context).pop();
                   },
-                ),
-                const SizedBox(
-                  height: 16,
                 ),
               ],
             ),
             actions: [
+              TextButton(
+                onPressed: () {
+                  downloadPlaylist(tEC.value.text);
+                  Navigator.of(context).pop();
+                },
+                child: const Text('Submit'),
+              ),
               TextButton(
                 onPressed: () {
                   Navigator.of(context).pop();
@@ -172,6 +186,16 @@ class _HomeState extends State<Home> {
             ],
           );
         });
+  }
+
+  Future<void> downloadPlaylist(String value) async {
+    var playlist = await YoutubeExplode().playlists.get(value);
+    var playlistName = playlist.title;
+    await for (var video
+    in YoutubeExplode().playlists.getVideos(playlist.id)) {
+      downloadLink(video.url, playlist: playlistName);
+    }
+    if (context.mounted) Navigator.pop(context);
   }
 
   Future<void> downloadLink(String url, {String playlist = "Youtube"}) async {

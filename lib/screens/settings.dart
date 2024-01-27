@@ -170,6 +170,15 @@ class _SettingsState extends State<Settings> {
           );
         });
   }
+
+  Future<void> saveColor(Color color) async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs.setInt('color', color.value);
+    print(prefs.getInt('color'));
+    if (context.mounted) {
+      Provider.of<MainProvider>(context, listen: false).seedColor = color;
+    }
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -205,8 +214,7 @@ class _SettingsState extends State<Settings> {
                           selectedColor:
                               Provider.of<MainProvider>(context).seedColor,
                           onColorChange: (Color color) {
-                            Provider.of<MainProvider>(context, listen: false)
-                                .seedColor = color;
+                            saveColor(color);
                           },
                         ),
                         actions: [
