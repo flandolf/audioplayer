@@ -23,6 +23,8 @@ class Home extends StatefulWidget {
 class _HomeState extends State<Home> {
   Map<String, dynamic> nowPlaying = {};
   List<Map<String, dynamic>> allSongs = [];
+  bool batchEdit = false;
+  Map<String, bool> selectedFiles = {};
 
   @override
   void initState() {
@@ -48,7 +50,7 @@ class _HomeState extends State<Home> {
     });
   }
 
-  Future<void> addtoDB(String path, String artist, String name,
+  Future<void> addToDB(String path, String artist, String name,
       {String album = 'Unknown'}) async {
     await widget.database.insert(
       'files',
@@ -68,7 +70,7 @@ class _HomeState extends State<Home> {
       final files = value.files;
       for (final file in files) {
         final path = file.path!;
-        await addtoDB(path, 'Unknown', file.name);
+        await addToDB(path, 'Unknown', file.name);
       }
 
       updatePlaylist();
@@ -85,7 +87,7 @@ class _HomeState extends State<Home> {
       for (final file in files) {
         if (file is File) {
           final path = file.path;
-          await addtoDB(path, 'Unknown', p.basename(path));
+          await addToDB(path, 'Unknown', p.basename(path));
         }
       }
 
@@ -180,14 +182,14 @@ class _HomeState extends State<Home> {
         .last;
     var stream = client.videos.streamsClient.get(streamInfo);
     var sanitized = video.title.replaceAll("/s+/gi", '-');
-    sanitized = sanitized.replaceAll("/[^a-zA-Z0-9\-]/gi", "");
+    sanitized = sanitized.replaceAll("/[^a-zA-Z0-9-]/gi", "");
     if (!context.mounted) return;
     var file = File(p.join(
         Provider.of<MainProvider>(context, listen: false).dlMusicDir,
         '$sanitized.mp3'));
     var fileStream = file.openWrite();
     await stream.pipe(fileStream);
-    await addtoDB(file.path, video.author, video.title, album: 'Youtube');
+    await addToDB(file.path, video.author, video.title, album: 'Youtube');
     updatePlaylist();
     await fileStream.flush();
     await fileStream.close();
@@ -209,65 +211,185 @@ class _HomeState extends State<Home> {
     }
   }
 
+  Future<void> batchEditDialog(BuildContext context) async {
+    final TextEditingController nTC = TextEditingController();
+    final TextEditingController arTC = TextEditingController();
+    final TextEditingController alTC = TextEditingController();
+    return showDialog(context: context, builder: (context) {
+      return AlertDialog(
+        title: const Text("Batch Edit"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nTC,
+              decoration: const InputDecoration(
+                labelText: 'Name',
+              ),
+            ),
+            TextField(
+              controller: arTC,
+              decoration: const InputDecoration(
+                labelText: 'Artist',
+              ),
+            ),
+            TextField(
+              controller: alTC,
+              decoration: const InputDecoration(
+                labelText: 'Album',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              for (var element in selectedFiles.keys) {
+                if (nTC.text.isNotEmpty) {
+                  widget.database.update(
+                    'files',
+                    {'name': nTC.text},
+                    where: 'path = ?',
+                    whereArgs: [element],
+                  );
+                }
+                if (arTC.text.isNotEmpty) {
+                  widget.database.update(
+                    'files',
+                    {'artist': arTC.text},
+                    where: 'path = ?',
+                    whereArgs: [element],
+                  );
+                }
+                if (alTC.text.isNotEmpty) {
+                  widget.database.update(
+                    'files',
+                    {'album': alTC.text},
+                    where: 'path = ?',
+                    whereArgs: [element],
+                  );
+                }
+              }
+
+              updatePlaylist();
+              setState(() {
+                batchEdit = false;
+                selectedFiles = {};
+              });
+              Navigator.pop(context);
+            },
+            child: const Text('Submit'),
+          ),
+        ],
+      );
+    });
+
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: TextButton(
-          onPressed: () {
-            setState(() {
-              nowPlaying = {};
-            });
-          },
-          child: const Text('Audio Player',
-              style: TextStyle(color: Colors.white, fontSize: 20)),
-        ),
         actions: [
+          IconButton(
+            onPressed: () {
+              scanLibrary();
+            },
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Scan Library',
+          ),
+          IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: addFile,
+            tooltip: 'Add File',
+          ),
+          IconButton(
+            icon: const Icon(Icons.folder),
+            onPressed: addFolder,
+            tooltip: 'Add Folder',
+          ),
+          IconButton(
+            onPressed: () {
+              addUrl(context);
+            },
+            icon: const Icon(Icons.link),
+            tooltip: 'Add URL',
+          ),
+          IconButton(
+              onPressed: () {
+                addPlaylistUrl(context);
+              },
+              icon: const Icon(Icons.list),
+              tooltip: 'Add Playlist'),
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () {
               Navigator.pushNamed(context, '/settings');
             },
           ),
+          IconButton(
+            icon: const Icon(Icons.edit),
+            onPressed: () {
+              setState(() {
+                if (batchEdit) {
+                  batchEdit = false;
+                  selectedFiles = {};
+                } else {
+                  batchEdit = true;
+                }
+              });
+            },
+            tooltip: 'Batch Edit',
+          ),
         ],
+        title: const Text('Audio Player',
+            style: TextStyle(color: Colors.white, fontSize: 20)),
       ),
       body: Column(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              IconButton(
-                onPressed: () {
-                  scanLibrary();
-                },
-                icon: const Icon(Icons.refresh),
-                tooltip: 'Scan Library',
-              ),
-              IconButton(
-                icon: const Icon(Icons.add),
-                onPressed: addFile,
-                tooltip: 'Add File',
-              ),
-              IconButton(
-                icon: const Icon(Icons.folder),
-                onPressed: addFolder,
-                tooltip: 'Add Folder',
-              ),
-              IconButton(
-                onPressed: () {
-                  addUrl(context);
-                },
-                icon: const Icon(Icons.link),
-                tooltip: 'Add URL',
-              ),
-              IconButton(
-                  onPressed: () {
-                    addPlaylistUrl(context);
-                  },
-                  icon: const Icon(Icons.list),
-                  tooltip: 'Add Playlist')
-            ],
-          ),
+          if (batchEdit)
+            FutureBuilder(
+                future: widget.database.query('files'),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const CircularProgressIndicator();
+                  } else if (snapshot.hasError) {
+                    return Text('Error: ${snapshot.error}');
+                  } else {
+                    final files = snapshot.data!;
+                    return Row(
+                      children: [
+                        const SizedBox(width: 10,),
+                        FilledButton(
+                            onPressed: () {
+                              selectedFiles = files.fold<Map<String, bool>>({},
+                                  (previousValue, element) {
+                                previousValue[element['path'].toString()] =
+                                    true;
+                                return previousValue;
+                              });
+                              setState(() {});
+                            },
+                            child: const Text("Select All")),
+                        const SizedBox(width: 10,),
+                        FilledButton(
+                            onPressed: () {
+                              batchEditDialog(context);
+                              setState(() {});
+                            },
+                            child: const Text("Edit"))
+                      ],
+                    );
+                  }
+                })
+          else
+            const SizedBox.shrink(),
           Expanded(
             child: FutureBuilder<List<Map<String, dynamic>>>(
               future: widget.database.query('files'),
@@ -278,124 +400,275 @@ class _HomeState extends State<Home> {
                   return Text('Error: ${snapshot.error}');
                 } else {
                   final files = snapshot.data!;
-
-                  return ListView.builder(
-                    itemCount: files.length,
-                    itemBuilder: (context, index) {
-                      final file = files[index];
-                      return ListTile(
-                        title: Text(file['name']),
-                        subtitle: Text("${file['artist']} - ${file['album']}"),
-                        trailing: IconButton(
-                            icon: const Icon(Icons.edit),
-                            onPressed: () async {
-                              final nameTextController =
-                                  TextEditingController(text: file['name']);
-                              final artistTextController =
-                                  TextEditingController(text: file['artist']);
-                              final albumTextController =
-                                  TextEditingController(text: file['album']);
-                              if (context.mounted) {
-                                showDialog(
-                                    context: context,
-                                    builder: (context) {
-                                      return AlertDialog(
-                                        title: Text("Edit ${file['name']}"),
-                                        content: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            TextField(
-                                              decoration: const InputDecoration(
-                                                labelText: 'Name',
-                                              ),
-                                              controller: nameTextController,
-                                            ),
-                                            TextField(
-                                              decoration: const InputDecoration(
-                                                labelText: 'Artist',
-                                              ),
-                                              controller: artistTextController,
-                                            ),
-                                            TextField(
-                                              decoration: const InputDecoration(
-                                                labelText: 'Album',
-                                              ),
-                                              controller: albumTextController,
-                                            ),
-                                          ],
-                                        ),
-                                        actions: [
-                                          TextButton(
-                                              onPressed: () {
-                                                albumTextController.dispose();
-                                                artistTextController.dispose();
-                                                nameTextController.dispose();
-                                                if (context.mounted) {
-                                                  Navigator.pop(context);
-                                                }
-                                              },
-                                              child: const Text("Cancel")),
-                                          TextButton(
-                                              onPressed: () async {
-                                                await widget.database.delete(
-                                                  'files',
-                                                  where: 'id = ?',
-                                                  whereArgs: [file['id']],
-                                                );
-                                                setState(() {});
-                                                albumTextController.dispose();
-                                                artistTextController.dispose();
-                                                nameTextController.dispose();
-                                                if (context.mounted) {
-                                                  Navigator.pop(context);
-                                                }
-                                              },
-                                              child: const Text("Delete")),
-                                          TextButton(
-                                              onPressed: () async {
-                                                // Edit database
-                                                await widget.database.update(
-                                                  'files',
-                                                  {
-                                                    'name':
-                                                        nameTextController.text,
-                                                    'artist':
-                                                        artistTextController
-                                                            .text,
-                                                    'album': albumTextController
-                                                        .text,
-                                                  },
-                                                  where: 'id = ?',
-                                                  whereArgs: [file['id']],
-                                                );
-                                                updatePlaylist();
-                                                setState(() {});
-                                                albumTextController.dispose();
-                                                artistTextController.dispose();
-                                                nameTextController.dispose();
-                                                if (context.mounted) {
-                                                  Navigator.pop(context);
-                                                }
-                                              },
-                                              child: const Text("Submit")),
-                                        ],
-                                      );
-                                    });
+                  if (files.isEmpty) {
+                    return const Center(child: Text('No songs found'));
+                  } else if (batchEdit) {
+                    return ListView.builder(
+                      itemCount: files.length,
+                      itemBuilder: (context, index) {
+                        final file = files[index];
+                        return ListTile(
+                          title: Text(file['name']),
+                          leading: Checkbox(
+                            value:
+                                selectedFiles[file['path'].toString()] ?? false,
+                            onChanged: (value) async {
+                              if (value!) {
+                                selectedFiles[file['path'].toString()] = true;
+                              } else {
+                                selectedFiles.remove(file['path'].toString());
                               }
-                            }),
-                        onTap: () {
-                          setState(() {
-                            nowPlaying = {
-                              'path': file['path'],
-                              'name': file['name'],
-                              'artist': file['artist'],
-                              'album': file['album'],
-                            };
-                          });
-                        },
-                      );
-                    },
-                  );
+                              setState(() {});
+                            },
+                          ),
+                          subtitle:
+                              Text("${file['artist']} - ${file['album']}"),
+                          trailing: IconButton(
+                              icon: const Icon(Icons.edit),
+                              onPressed: () async {
+                                final nameTextController =
+                                    TextEditingController(text: file['name']);
+                                final artistTextController =
+                                    TextEditingController(text: file['artist']);
+                                final albumTextController =
+                                    TextEditingController(text: file['album']);
+                                if (context.mounted) {
+                                  showDialog(
+                                      context: context,
+                                      builder: (context) {
+                                        return AlertDialog(
+                                          title: Text("Edit ${file['name']}"),
+                                          content: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              TextField(
+                                                decoration:
+                                                    const InputDecoration(
+                                                  labelText: 'Name',
+                                                ),
+                                                controller: nameTextController,
+                                              ),
+                                              TextField(
+                                                decoration:
+                                                    const InputDecoration(
+                                                  labelText: 'Artist',
+                                                ),
+                                                controller:
+                                                    artistTextController,
+                                              ),
+                                              TextField(
+                                                decoration:
+                                                    const InputDecoration(
+                                                  labelText: 'Album',
+                                                ),
+                                                controller: albumTextController,
+                                              ),
+                                            ],
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                                onPressed: () {
+                                                  albumTextController.dispose();
+                                                  artistTextController
+                                                      .dispose();
+                                                  nameTextController.dispose();
+                                                  if (context.mounted) {
+                                                    Navigator.pop(context);
+                                                  }
+                                                },
+                                                child: const Text("Cancel")),
+                                            TextButton(
+                                                onPressed: () async {
+                                                  await widget.database.delete(
+                                                    'files',
+                                                    where: 'id = ?',
+                                                    whereArgs: [file['id']],
+                                                  );
+                                                  setState(() {});
+                                                  albumTextController.dispose();
+                                                  artistTextController
+                                                      .dispose();
+                                                  nameTextController.dispose();
+                                                  if (context.mounted) {
+                                                    Navigator.pop(context);
+                                                  }
+                                                },
+                                                child: const Text("Delete")),
+                                            TextButton(
+                                                onPressed: () async {
+                                                  // Edit database
+                                                  await widget.database.update(
+                                                    'files',
+                                                    {
+                                                      'name': nameTextController
+                                                          .text,
+                                                      'artist':
+                                                          artistTextController
+                                                              .text,
+                                                      'album':
+                                                          albumTextController
+                                                              .text,
+                                                    },
+                                                    where: 'id = ?',
+                                                    whereArgs: [file['id']],
+                                                  );
+                                                  updatePlaylist();
+                                                  setState(() {});
+                                                  albumTextController.dispose();
+                                                  artistTextController
+                                                      .dispose();
+                                                  nameTextController.dispose();
+                                                  if (context.mounted) {
+                                                    Navigator.pop(context);
+                                                  }
+                                                },
+                                                child: const Text("Submit")),
+                                          ],
+                                        );
+                                      });
+                                }
+                              }),
+                          onTap: () {
+                            setState(() {
+                              nowPlaying = {
+                                'path': file['path'],
+                                'name': file['name'],
+                                'artist': file['artist'],
+                                'album': file['album'],
+                              };
+                            });
+                          },
+                        );
+                      },
+                    );
+                  } else {
+                    return ListView.builder(
+                      itemCount: files.length,
+                      itemBuilder: (context, index) {
+                        final file = files[index];
+                        return ListTile(
+                          title: Text(file['name']),
+                          subtitle:
+                              Text("${file['artist']} - ${file['album']}"),
+                          trailing: IconButton(
+                              icon: const Icon(Icons.edit),
+                              onPressed: () async {
+                                final nameTextController =
+                                    TextEditingController(text: file['name']);
+                                final artistTextController =
+                                    TextEditingController(text: file['artist']);
+                                final albumTextController =
+                                    TextEditingController(text: file['album']);
+                                if (context.mounted) {
+                                  showDialog(
+                                      context: context,
+                                      builder: (context) {
+                                        return AlertDialog(
+                                          title: Text("Edit ${file['name']}"),
+                                          content: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              TextField(
+                                                decoration:
+                                                    const InputDecoration(
+                                                  labelText: 'Name',
+                                                ),
+                                                controller: nameTextController,
+                                              ),
+                                              TextField(
+                                                decoration:
+                                                    const InputDecoration(
+                                                  labelText: 'Artist',
+                                                ),
+                                                controller:
+                                                    artistTextController,
+                                              ),
+                                              TextField(
+                                                decoration:
+                                                    const InputDecoration(
+                                                  labelText: 'Album',
+                                                ),
+                                                controller: albumTextController,
+                                              ),
+                                            ],
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                                onPressed: () {
+                                                  albumTextController.dispose();
+                                                  artistTextController
+                                                      .dispose();
+                                                  nameTextController.dispose();
+                                                  if (context.mounted) {
+                                                    Navigator.pop(context);
+                                                  }
+                                                },
+                                                child: const Text("Cancel")),
+                                            TextButton(
+                                                onPressed: () async {
+                                                  await widget.database.delete(
+                                                    'files',
+                                                    where: 'id = ?',
+                                                    whereArgs: [file['id']],
+                                                  );
+                                                  setState(() {});
+                                                  albumTextController.dispose();
+                                                  artistTextController
+                                                      .dispose();
+                                                  nameTextController.dispose();
+                                                  if (context.mounted) {
+                                                    Navigator.pop(context);
+                                                  }
+                                                },
+                                                child: const Text("Delete")),
+                                            TextButton(
+                                                onPressed: () async {
+                                                  // Edit database
+                                                  await widget.database.update(
+                                                    'files',
+                                                    {
+                                                      'name': nameTextController
+                                                          .text,
+                                                      'artist':
+                                                          artistTextController
+                                                              .text,
+                                                      'album':
+                                                          albumTextController
+                                                              .text,
+                                                    },
+                                                    where: 'id = ?',
+                                                    whereArgs: [file['id']],
+                                                  );
+                                                  updatePlaylist();
+                                                  setState(() {});
+                                                  albumTextController.dispose();
+                                                  artistTextController
+                                                      .dispose();
+                                                  nameTextController.dispose();
+                                                  if (context.mounted) {
+                                                    Navigator.pop(context);
+                                                  }
+                                                },
+                                                child: const Text("Submit")),
+                                          ],
+                                        );
+                                      });
+                                }
+                              }),
+                          onTap: () {
+                            setState(() {
+                              nowPlaying = {
+                                'path': file['path'],
+                                'name': file['name'],
+                                'artist': file['artist'],
+                                'album': file['album'],
+                              };
+                            });
+                          },
+                        );
+                      },
+                    );
+                  }
                 }
               },
             ),
