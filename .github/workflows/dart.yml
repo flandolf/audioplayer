@@ -20,3 +20,7 @@ jobs:
         with:
           name: windows
           path: build/windows/x64/runner/Release
+      - uses: ncipollo/release-action@v1
+        with:
+         artifacts: "build/windows/x64/runner/Release"
+         token: ${{ secrets.GITHUB_TOKEN }}
