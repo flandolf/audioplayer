@@ -1,16 +1,49 @@
-# audioplayer
+# AudioPlayer
 
-AudioPlayer
+Flutter audio player with YouTube download support. 
+
+## Features
+* Play audio files from local storage
+* Download audio from YouTube
+* Material 3
+* Clean Interface
+* Dark Mode
+* Cross Platform (macOS, Windows, Linux) 
+* Sleep Timer
+* Speed Control
 
 ## Getting Started
+1. Clone the repo
+2. Run `flutter pub get`
+3. Run `flutter run`
+4. Enjoy!
 
-This project is a starting point for a Flutter application.
+## Build
+1. Run `flutter pub get`
+2. Run `flutter build` (macOS and Windows only)
 
-A few resources to get you started if this is your first Flutter project:
+## Dependencies
+* window_manager
+* provider
+* file_picker
+* sqflite
+* path
+* shared_preferences
+* media_kit
+* media_kit_libs_audio
+* flutter_material_color_picker
+* youtube_explode_dart
+* sqflite_common_ffi
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+## To Do
+* [ ] Add support for more audio formats
+* [ ] Add working shuffle feature
+* [ ] Metadata support
+* [ ] File Sorting (Artist, Album, etc.)
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Screenshots
+![img.png](img.png)
+![img_1.png](img_1.png)
+![img_2.png](img_2.png)
+
+

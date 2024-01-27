@@ -1,3 +1,4 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_material_color_picker/flutter_material_color_picker.dart';
 import 'package:path/path.dart' as p;
@@ -125,6 +126,50 @@ class _SettingsState extends State<Settings> {
         });
   }
 
+  Future<void> setDownloadedMusicDirectory(BuildContext context) async {
+    showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Downloaded Music Directory'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: _controller,
+                  decoration: const InputDecoration(
+                    labelText: 'Directory',
+                  ),
+                ),
+                SizedBox(height: 10),
+                FilledButton(onPressed: () async {
+                  FilePicker.platform.getDirectoryPath().then((value) {
+                    if (value != null) {
+                      _controller.text = value;
+                    }
+                  }
+                  );
+                }, child: Text('Select Directory')),
+              ],
+            ),
+            actions: [
+              TextButton(
+                child: const Text('Cancel'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+              TextButton(
+                child: const Text('OK'),
+                onPressed: () async {
+                  await saveDirectory(_controller.text);
+                  if (context.mounted) Navigator.of(context).pop();
+                },
+              ),
+            ],
+          );
+        });
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -185,6 +230,15 @@ class _SettingsState extends State<Settings> {
                 icon: const Icon(Icons.nightlight),
                 onPressed: () {
                   setSleepTimer(context);
+                },
+              ),
+            ),
+            ListTile(
+              title: const Text('Set Downloaded Music Directory'),
+              trailing: IconButton(
+                icon: const Icon(Icons.edit),
+                onPressed: () {
+                  setDownloadedMusicDirectory(context);
                 },
               ),
             ),

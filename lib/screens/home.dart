@@ -149,9 +149,10 @@ class _HomeState extends State<Home> {
                   ),
                   onSubmitted: (value) async {
                     var playlist = await YoutubeExplode().playlists.get(value);
+                    var playlistName = playlist.title;
                     await for (var video
                         in YoutubeExplode().playlists.getVideos(playlist.id)) {
-                      await downloadLink(video.url);
+                      downloadLink(video.url, playlist: playlistName);
                     }
                     if (context.mounted) Navigator.pop(context);
                   },
@@ -173,7 +174,7 @@ class _HomeState extends State<Home> {
         });
   }
 
-  Future<void> downloadLink(String url) async {
+  Future<void> downloadLink(String url, {String playlist = "Youtube"}) async {
     var client = YoutubeExplode();
     var video = await client.videos.get(url);
     var manifest = await client.videos.streamsClient.getManifest(url);
@@ -181,15 +182,17 @@ class _HomeState extends State<Home> {
         .where((element) => element.audioCodec.contains('mp4a'))
         .last;
     var stream = client.videos.streamsClient.get(streamInfo);
-    var sanitized = video.title.replaceAll("/s+/gi", '-');
-    sanitized = sanitized.replaceAll("/[^a-zA-Z0-9-]/gi", "");
+    var sanitized = video.title.replaceAll("/s+/gi", "_");
+    var noTopicAuthor = video.author.replaceAll("- Topic", "").trim();
+    var album = playlist.replaceAll("Album - ", "").trim();
+    sanitized = sanitized.replaceAll("/[^a-zA-Z0-9-]/gi", "").trim();
     if (!context.mounted) return;
     var file = File(p.join(
         Provider.of<MainProvider>(context, listen: false).dlMusicDir,
         '$sanitized.mp3'));
     var fileStream = file.openWrite();
     await stream.pipe(fileStream);
-    await addToDB(file.path, video.author, video.title, album: 'Youtube');
+    await addToDB(file.path, noTopicAuthor, video.title, album: album);
     updatePlaylist();
     await fileStream.flush();
     await fileStream.close();
@@ -215,81 +218,82 @@ class _HomeState extends State<Home> {
     final TextEditingController nTC = TextEditingController();
     final TextEditingController arTC = TextEditingController();
     final TextEditingController alTC = TextEditingController();
-    return showDialog(context: context, builder: (context) {
-      return AlertDialog(
-        title: const Text("Batch Edit"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nTC,
-              decoration: const InputDecoration(
-                labelText: 'Name',
-              ),
+    return showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text("Batch Edit"),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nTC,
+                  decoration: const InputDecoration(
+                    labelText: 'Name',
+                  ),
+                ),
+                TextField(
+                  controller: arTC,
+                  decoration: const InputDecoration(
+                    labelText: 'Artist',
+                  ),
+                ),
+                TextField(
+                  controller: alTC,
+                  decoration: const InputDecoration(
+                    labelText: 'Album',
+                  ),
+                ),
+              ],
             ),
-            TextField(
-              controller: arTC,
-              decoration: const InputDecoration(
-                labelText: 'Artist',
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                child: const Text('Cancel'),
               ),
-            ),
-            TextField(
-              controller: alTC,
-              decoration: const InputDecoration(
-                labelText: 'Album',
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              for (var element in selectedFiles.keys) {
-                if (nTC.text.isNotEmpty) {
-                  widget.database.update(
-                    'files',
-                    {'name': nTC.text},
-                    where: 'path = ?',
-                    whereArgs: [element],
-                  );
-                }
-                if (arTC.text.isNotEmpty) {
-                  widget.database.update(
-                    'files',
-                    {'artist': arTC.text},
-                    where: 'path = ?',
-                    whereArgs: [element],
-                  );
-                }
-                if (alTC.text.isNotEmpty) {
-                  widget.database.update(
-                    'files',
-                    {'album': alTC.text},
-                    where: 'path = ?',
-                    whereArgs: [element],
-                  );
-                }
-              }
+              FilledButton(
+                onPressed: () {
+                  for (var element in selectedFiles.keys) {
+                    if (nTC.text.isNotEmpty) {
+                      widget.database.update(
+                        'files',
+                        {'name': nTC.text},
+                        where: 'path = ?',
+                        whereArgs: [element],
+                      );
+                    }
+                    if (arTC.text.isNotEmpty) {
+                      widget.database.update(
+                        'files',
+                        {'artist': arTC.text},
+                        where: 'path = ?',
+                        whereArgs: [element],
+                      );
+                    }
+                    if (alTC.text.isNotEmpty) {
+                      widget.database.update(
+                        'files',
+                        {'album': alTC.text},
+                        where: 'path = ?',
+                        whereArgs: [element],
+                      );
+                    }
+                  }
 
-              updatePlaylist();
-              setState(() {
-                batchEdit = false;
-                selectedFiles = {};
-              });
-              Navigator.pop(context);
-            },
-            child: const Text('Submit'),
-          ),
-        ],
-      );
-    });
-
+                  updatePlaylist();
+                  setState(() {
+                    batchEdit = false;
+                    selectedFiles = {};
+                  });
+                  Navigator.pop(context);
+                },
+                child: const Text('Submit'),
+              ),
+            ],
+          );
+        });
   }
 
   @override
@@ -365,7 +369,9 @@ class _HomeState extends State<Home> {
                     final files = snapshot.data!;
                     return Row(
                       children: [
-                        const SizedBox(width: 10,),
+                        const SizedBox(
+                          width: 10,
+                        ),
                         FilledButton(
                             onPressed: () {
                               selectedFiles = files.fold<Map<String, bool>>({},
@@ -377,7 +383,9 @@ class _HomeState extends State<Home> {
                               setState(() {});
                             },
                             child: const Text("Select All")),
-                        const SizedBox(width: 10,),
+                        const SizedBox(
+                          width: 10,
+                        ),
                         FilledButton(
                             onPressed: () {
                               batchEditDialog(context);
