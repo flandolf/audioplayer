@@ -1,10 +1,9 @@
-import 'dart:io';
-
 import 'package:audioplayer/screens/home.dart';
 import 'package:audioplayer/screens/onboarding.dart';
 import 'package:audioplayer/screens/settings.dart';
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
+import 'package:metadata_god/metadata_god.dart';
 import 'package:path/path.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
@@ -16,6 +15,7 @@ bool onboarding = false;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
+  MetadataGod.initialize();
   await windowManager.ensureInitialized();
 
   WindowOptions windowOptions = const WindowOptions(
@@ -31,30 +31,18 @@ void main() async {
 
   Database db;
 
-  if (Platform.isWindows) {
-    sqfliteFfiInit();
-    db = await databaseFactoryFfi.openDatabase(
-        join(await databaseFactoryFfi.getDatabasesPath(), 'audio_player.db'),
-        options: OpenDatabaseOptions(
-            version: 1,
-            onCreate: (db, version) async {
-              onboarding = true;
-              db.execute(
-                'CREATE TABLE files(id INTEGER PRIMARY KEY, name TEXT, path TEXT, artist TEXT, album TEXT)',
-              );
-            }));
-  } else {
-    db = await openDatabase(
-      join(await getDatabasesPath(), 'audio_player.db'),
-      version: 1,
-      onCreate: (db, version) async {
-        onboarding = true;
-        db.execute(
-          'CREATE TABLE files(id INTEGER PRIMARY KEY, name TEXT, path TEXT, artist TEXT, album TEXT)',
-        );
-      },
-    );
-  }
+  sqfliteFfiInit();
+  databaseFactory = databaseFactoryFfi;
+  db = await databaseFactory.openDatabase(
+      join(await databaseFactoryFfi.getDatabasesPath(), 'audio_player.db'),
+      options: OpenDatabaseOptions(
+          version: 1,
+          onCreate: (db, version) async {
+            onboarding = true;
+            db.execute(
+              'CREATE TABLE files(id INTEGER PRIMARY KEY, name TEXT, path TEXT, artist TEXT, album TEXT)',
+            );
+          }));
 
   runApp(
     ChangeNotifierProvider(
@@ -85,9 +73,11 @@ class MyApp extends StatelessWidget {
         '/settings': (context) => const Settings(),
         '/home': (context) => Home(database),
       },
-      home: onboarding ? OnboardingPage(database) : Home(
-        database,
-      ),
+      home: onboarding
+          ? OnboardingPage(database)
+          : Home(
+              database,
+            ),
     );
   }
 }

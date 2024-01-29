@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:audioplayer/widgets/player.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:metadata_god/metadata_god.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,6 +11,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
 import '../main.dart';
+import '../services/youtubeservice.dart';
 
 class Home extends StatefulWidget {
   final Database database;
@@ -27,6 +29,7 @@ class _HomeState extends State<Home> {
   Map<String, bool> selectedFiles = {};
   bool currentlyDownloading = false;
   double downloadProgress = 0;
+
   @override
   void initState() {
     super.initState();
@@ -38,13 +41,12 @@ class _HomeState extends State<Home> {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final String? directory = prefs.getString('directory');
     final int? seedColor = prefs.getInt('seedColor');
-
-    print(p.join(await getDatabasesPath(), 'audio_player.db'));
     if (directory != null && seedColor != null && context.mounted) {
       Provider.of<MainProvider>(context, listen: false).dlMusicDir = directory;
-      Provider.of<MainProvider>(context, listen: false).seedColor = Color(seedColor);
-      Provider.of<MainProvider>(context, listen: false).isDarkMode = prefs.getBool('isDarkMode') ?? false;
-
+      Provider.of<MainProvider>(context, listen: false).seedColor =
+          Color(seedColor);
+      Provider.of<MainProvider>(context, listen: false).isDarkMode =
+          prefs.getBool('isDarkMode') ?? false;
     }
   }
 
@@ -57,19 +59,24 @@ class _HomeState extends State<Home> {
     });
   }
 
-  Future<void> addToDB(String path, String artist, String name,
-      {String album = 'Unknown'}) async {
+  Future<void> addToDB(dynamic data) async {
+    var name = data['name'];
+    var path = data['path'];
+    var artist = data['artist'];
+    var album = data['album'];
     await widget.database.insert(
       'files',
       {'name': name, 'path': path, 'artist': artist, 'album': album},
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
+    print("Added $name to database");
   }
 
   Future<void> addFile() async {
     FilePicker.platform
         .pickFiles(
-      type: FileType.audio,
+      type: FileType.custom,
+      allowedExtensions: ['mp3', 'm4a', 'flac'],
       allowMultiple: true,
     )
         .then((value) async {
@@ -77,7 +84,19 @@ class _HomeState extends State<Home> {
       final files = value.files;
       for (final file in files) {
         final path = file.path!;
-        await addToDB(path, 'Unknown', file.name);
+        if (path.endsWith('.mp3') ||
+            path.endsWith('.m4a') ||
+            path.endsWith('.flac')) {
+          Metadata metadata = await MetadataGod.readMetadata(file: path);
+          await addToDB({
+            'name': metadata.title ?? p.basename(path),
+            'path': path,
+            'artist': metadata.artist ?? 'Unknown',
+            'album': metadata.album ?? 'Unknown',
+          });
+        } else {
+          return;
+        }
       }
 
       updatePlaylist();
@@ -94,12 +113,17 @@ class _HomeState extends State<Home> {
       for (final file in files) {
         if (file is File) {
           final path = file.path;
-          await addToDB(path, 'Unknown', p.basename(path));
+          Metadata metadata = await MetadataGod.readMetadata(file: path);
+          await addToDB({
+            'name': metadata.title ?? p.basename(path),
+            'path': path,
+            'artist': metadata.artist ?? 'Unknown',
+            'album': metadata.album ?? 'Unknown',
+          });
         }
       }
 
       updatePlaylist();
-
       setState(() {});
     });
   }
@@ -121,8 +145,13 @@ class _HomeState extends State<Home> {
                     border: UnderlineInputBorder(),
                     labelText: 'URL',
                   ),
-                  onSubmitted: (value) {
-                    downloadLink(value);
+                  onSubmitted: (value) async {
+                    var result = await downloadLink(
+                        value,
+                        Provider.of<MainProvider>(context, listen: false)
+                            .dlMusicDir);
+                    await addToDB(result);
+                    updatePlaylist();
                     if (context.mounted) Navigator.pop(context);
                   },
                 ),
@@ -130,9 +159,14 @@ class _HomeState extends State<Home> {
             ),
             actions: [
               TextButton(
-                onPressed: () {
-                  downloadLink(tEC.value.text);
-                  Navigator.of(context).pop();
+                onPressed: () async {
+                  var result = await downloadLink(
+                      tEC.value.text,
+                      Provider.of<MainProvider>(context, listen: false)
+                          .dlMusicDir);
+                  await addToDB(result);
+                  updatePlaylist();
+                  if (context.mounted) Navigator.of(context).pop();
                 },
                 child: const Text('Submit'),
               ),
@@ -185,9 +219,9 @@ class _HomeState extends State<Home> {
                     currentlyDownloading = true;
                   });
                   downloadPlaylist(tEC.value.text).then((value) => setState(() {
-                    currentlyDownloading = false;
-                  }));
-                  
+                        currentlyDownloading = false;
+                      }));
+
                   Navigator.of(context).pop();
                 },
                 child: const Text('Submit'),
@@ -209,54 +243,23 @@ class _HomeState extends State<Home> {
 
     var videos = YoutubeExplode().playlists.getVideos(playlist.id);
     var videosList = await videos.toList();
-
-    int totalVideos = videosList.length;
-    int currentVideo = 0;
-
-    // List to store all download futures
     List<Future<void>> downloadFutures = [];
 
     await Future.forEach(videosList, (video) {
-      currentVideo++;
-      downloadFutures.add(downloadLink(video.url, playlist: playlistName));
+      downloadFutures.add(downloadLink(video.url,
+          Provider.of<MainProvider>(context, listen: false).dlMusicDir,
+          playlist: playlistName));
     });
 
     // Wait for all downloads to complete
     await Future.wait(downloadFutures);
-
+    updatePlaylist();
     // Reset download status
     setState(() {
       currentlyDownloading = false;
-      downloadProgress = 0.0;
+      downloadProgress = 0;
     });
   }
-
-
-  Future<void> downloadLink(String url, {String playlist = "Youtube"}) async {
-    var client = YoutubeExplode();
-    var video = await client.videos.get(url);
-    var manifest = await client.videos.streamsClient.getManifest(url);
-    var streamInfo = manifest.audioOnly
-        .where((element) => element.audioCodec.contains('mp4a'))
-        .last;
-    var stream = client.videos.streamsClient.get(streamInfo);
-    var sanitized = video.title.replaceAll("/s+/gi", "_");
-    var noTopicAuthor = video.author.replaceAll("- Topic", "").trim();
-    var album = playlist.replaceAll("Album - ", "").trim();
-    sanitized = sanitized.replaceAll("/[^a-zA-Z0-9-]/gi", "").trim();
-    if (!context.mounted) return;
-    var file = File(p.join(
-        Provider.of<MainProvider>(context, listen: false).dlMusicDir,
-        '$sanitized.mp3'));
-    var fileStream = file.openWrite();
-    await stream.pipe(fileStream);
-    await addToDB(file.path, noTopicAuthor, video.title, album: album);
-    updatePlaylist();
-    await fileStream.flush();
-    await fileStream.close();
-    client.close();
-  }
-
 
   Future<void> scanLibrary() async {
     final files = await widget.database.query('files');
@@ -322,6 +325,11 @@ class _HomeState extends State<Home> {
                         where: 'path = ?',
                         whereArgs: [element],
                       );
+                      MetadataGod.writeMetadata(
+                          file: element,
+                          metadata: Metadata(
+                            title: nTC.text,
+                          ));
                     }
                     if (arTC.text.isNotEmpty) {
                       widget.database.update(
@@ -330,6 +338,11 @@ class _HomeState extends State<Home> {
                         where: 'path = ?',
                         whereArgs: [element],
                       );
+                      MetadataGod.writeMetadata(
+                          file: element,
+                          metadata: Metadata(
+                            artist: arTC.text,
+                          ));
                     }
                     if (alTC.text.isNotEmpty) {
                       widget.database.update(
@@ -338,9 +351,13 @@ class _HomeState extends State<Home> {
                         where: 'path = ?',
                         whereArgs: [element],
                       );
+                      MetadataGod.writeMetadata(
+                          file: element,
+                          metadata: Metadata(
+                            album: alTC.text,
+                          ));
                     }
                   }
-
                   updatePlaylist();
                   setState(() {
                     batchEdit = false;
@@ -412,19 +429,21 @@ class _HomeState extends State<Home> {
           ),
         ],
         title: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             const Text('Audio Player',
                 style: TextStyle(color: Colors.white, fontSize: 20)),
-            const SizedBox( width: 10,),
+            const SizedBox(
+              width: 10,
+            ),
             if (currentlyDownloading)
-              SizedBox(
-                width: MediaQuery.of(context).size.width * 0.2,
-                child: LinearProgressIndicator(
-                  value: downloadProgress,
-                )
-              )
+              const SizedBox(
+                  width: 15, height: 15, child: CircularProgressIndicator())
             else
-              const SizedBox.shrink(),
+              Text(
+                Provider.of<MainProvider>(context).dlMusicDir,
+                style: const TextStyle(fontSize: 16),
+              ),
           ],
         ),
       ),
@@ -720,6 +739,19 @@ class _HomeState extends State<Home> {
                                                     where: 'id = ?',
                                                     whereArgs: [file['id']],
                                                   );
+                                                  MetadataGod.writeMetadata(
+                                                      file: file['path'],
+                                                      metadata: Metadata(
+                                                        title:
+                                                            nameTextController
+                                                                .text,
+                                                        artist:
+                                                            artistTextController
+                                                                .text,
+                                                        album:
+                                                            albumTextController
+                                                                .text,
+                                                      ));
                                                   updatePlaylist();
                                                   setState(() {});
                                                   albumTextController.dispose();
