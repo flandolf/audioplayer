@@ -1,0 +1,23 @@
+{
+  'version': 0,
+  'use-external-names': 'false',
+  'case-sensitive': 'false',
+  'roots': [{
+    'type': 'directory',
+    'name': "/Users/andywang/IdeaProjects/audioplayer/macos/build/Release/media_kit_libs_macos_audio/media_kit_libs_macos_audio.framework/Modules"
+    'contents': [{
+      'type': 'file',
+      'name': "module.modulemap",
+      'external-contents': "/Users/andywang/IdeaProjects/audioplayer/macos/build/Pods.build/Release/media_kit_libs_macos_audio.build/unextended-module.modulemap",
+    }]
+    },
+    {
+    'type': 'directory',
+    'name': "/Users/andywang/IdeaProjects/audioplayer/macos/build/Release/media_kit_libs_macos_audio/media_kit_libs_macos_audio.framework/Headers"
+    'contents': [{
+      'type': 'file',
+      'name': "media_kit_libs_macos_audio-Swift.h",
+      'external-contents': "/Users/andywang/IdeaProjects/audioplayer/macos/build/Pods.build/Release/media_kit_libs_macos_audio.build/unextended-interface-header.h",
+    }]
+    }]
+}

@@ -75,7 +75,6 @@ class _SettingsState extends State<Settings> {
                   );
 
                   if (context.mounted) {
-                    Provider.of<MainProvider>(context, listen: false).notifyListeners();
                     Navigator.of(context).pop();
                   }
                 },
@@ -141,15 +140,16 @@ class _SettingsState extends State<Settings> {
                     labelText: 'Directory',
                   ),
                 ),
-                SizedBox(height: 10),
-                FilledButton(onPressed: () async {
-                  FilePicker.platform.getDirectoryPath().then((value) {
-                    if (value != null) {
-                      _controller.text = value;
-                    }
-                  }
-                  );
-                }, child: Text('Select Directory')),
+                const SizedBox(height: 10),
+                FilledButton(
+                    onPressed: () async {
+                      FilePicker.platform.getDirectoryPath().then((value) {
+                        if (value != null) {
+                          _controller.text = value;
+                        }
+                      });
+                    },
+                    child: const Text('Select Directory')),
               ],
             ),
             actions: [
@@ -174,11 +174,11 @@ class _SettingsState extends State<Settings> {
   Future<void> saveColor(Color color) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     prefs.setInt('color', color.value);
-    print(prefs.getInt('color'));
     if (context.mounted) {
       Provider.of<MainProvider>(context, listen: false).seedColor = color;
     }
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

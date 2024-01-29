@@ -1,0 +1,31 @@
+Target dependency graph (12 targets)
+Target 'Pods-RunnerTests' in project 'Pods'
+➜ Explicit dependency on target 'Pods-Runner' in project 'Pods'
+Target 'Pods-Runner' in project 'Pods'
+➜ Explicit dependency on target 'FMDB' in project 'Pods'
+➜ Explicit dependency on target 'FlutterMacOS' in project 'Pods'
+➜ Explicit dependency on target 'media_kit_libs_macos_audio' in project 'Pods'
+➜ Explicit dependency on target 'media_kit_native_event_loop' in project 'Pods'
+➜ Explicit dependency on target 'screen_retriever' in project 'Pods'
+➜ Explicit dependency on target 'shared_preferences_foundation' in project 'Pods'
+➜ Explicit dependency on target 'sqflite' in project 'Pods'
+➜ Explicit dependency on target 'window_manager' in project 'Pods'
+Target 'window_manager' in project 'Pods'
+➜ Explicit dependency on target 'FlutterMacOS' in project 'Pods'
+Target 'sqflite' in project 'Pods'
+➜ Explicit dependency on target 'FMDB' in project 'Pods'
+➜ Explicit dependency on target 'FlutterMacOS' in project 'Pods'
+➜ Explicit dependency on target 'sqflite-sqflite_macos_privacy' in project 'Pods'
+Target 'sqflite-sqflite_macos_privacy' in project 'Pods' (no dependencies)
+Target 'shared_preferences_foundation' in project 'Pods'
+➜ Explicit dependency on target 'FlutterMacOS' in project 'Pods'
+➜ Explicit dependency on target 'shared_preferences_foundation-shared_preferences_foundation_privacy' in project 'Pods'
+Target 'shared_preferences_foundation-shared_preferences_foundation_privacy' in project 'Pods' (no dependencies)
+Target 'screen_retriever' in project 'Pods'
+➜ Explicit dependency on target 'FlutterMacOS' in project 'Pods'
+Target 'media_kit_native_event_loop' in project 'Pods'
+➜ Explicit dependency on target 'FlutterMacOS' in project 'Pods'
+Target 'media_kit_libs_macos_audio' in project 'Pods'
+➜ Explicit dependency on target 'FlutterMacOS' in project 'Pods'
+Target 'FlutterMacOS' in project 'Pods' (no dependencies)
+Target 'FMDB' in project 'Pods' (no dependencies)

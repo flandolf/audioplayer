@@ -1,0 +1,10 @@
+framework module media_kit_libs_macos_audio {
+  umbrella header "media_kit_libs_macos_audio-umbrella.h"
+
+  export *
+  module * { export * }
+}
+
+module media_kit_libs_macos_audio.__Swift {
+  exclude header "media_kit_libs_macos_audio-Swift.h"
+}

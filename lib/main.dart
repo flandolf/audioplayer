@@ -1,26 +1,19 @@
+import 'dart:io';
+
 import 'package:audioplayer/screens/home.dart';
+import 'package:audioplayer/screens/onboarding.dart';
 import 'package:audioplayer/screens/settings.dart';
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:path/path.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 Color sC = Colors.blue;
+bool onboarding = false;
 
 void main() async {
-  sqfliteFfiInit();
-  final db = await databaseFactoryFfi.openDatabase(
-      join(await databaseFactoryFfi.getDatabasesPath(), 'audio_player.db'),
-      options: OpenDatabaseOptions(
-          version: 1,
-          onCreate: (db, version) async {
-            db.execute(
-              'CREATE TABLE files(id INTEGER PRIMARY KEY, name TEXT, path TEXT, artist TEXT, album TEXT)',
-            );
-          }));
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
   await windowManager.ensureInitialized();
@@ -35,6 +28,33 @@ void main() async {
     await windowManager.show();
     await windowManager.focus();
   });
+
+  Database db;
+
+  if (Platform.isWindows) {
+    sqfliteFfiInit();
+    db = await databaseFactoryFfi.openDatabase(
+        join(await databaseFactoryFfi.getDatabasesPath(), 'audio_player.db'),
+        options: OpenDatabaseOptions(
+            version: 1,
+            onCreate: (db, version) async {
+              onboarding = true;
+              db.execute(
+                'CREATE TABLE files(id INTEGER PRIMARY KEY, name TEXT, path TEXT, artist TEXT, album TEXT)',
+              );
+            }));
+  } else {
+    db = await openDatabase(
+      join(await getDatabasesPath(), 'audio_player.db'),
+      version: 1,
+      onCreate: (db, version) async {
+        onboarding = true;
+        db.execute(
+          'CREATE TABLE files(id INTEGER PRIMARY KEY, name TEXT, path TEXT, artist TEXT, album TEXT)',
+        );
+      },
+    );
+  }
 
   runApp(
     ChangeNotifierProvider(
@@ -63,8 +83,11 @@ class MyApp extends StatelessWidget {
       ),
       routes: {
         '/settings': (context) => const Settings(),
+        '/home': (context) => Home(database),
       },
-      home: Home(database),
+      home: onboarding ? OnboardingPage(database) : Home(
+        database,
+      ),
     );
   }
 }

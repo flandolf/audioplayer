@@ -25,7 +25,8 @@ class _HomeState extends State<Home> {
   List<Map<String, dynamic>> allSongs = [];
   bool batchEdit = false;
   Map<String, bool> selectedFiles = {};
-
+  bool currentlyDownloading = false;
+  double downloadProgress = 0;
   @override
   void initState() {
     super.initState();
@@ -37,11 +38,13 @@ class _HomeState extends State<Home> {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final String? directory = prefs.getString('directory');
     final int? seedColor = prefs.getInt('seedColor');
+
+    print(p.join(await getDatabasesPath(), 'audio_player.db'));
     if (directory != null && seedColor != null && context.mounted) {
       Provider.of<MainProvider>(context, listen: false).dlMusicDir = directory;
       Provider.of<MainProvider>(context, listen: false).seedColor = Color(seedColor);
       Provider.of<MainProvider>(context, listen: false).isDarkMode = prefs.getBool('isDarkMode') ?? false;
-      Provider.of<MainProvider>(context, listen: false).notifyListeners();
+
     }
   }
 
@@ -162,9 +165,15 @@ class _HomeState extends State<Home> {
                     labelText: 'URL',
                   ),
                   controller: tEC,
-                  onSubmitted: (value) {
-                    downloadPlaylist(value);
-                    Navigator.of(context).pop();
+                  onSubmitted: (value) async {
+                    setState(() {
+                      currentlyDownloading = true;
+                    });
+                    downloadPlaylist(tEC.value.text);
+                    setState(() {
+                      currentlyDownloading = false;
+                    });
+                    if (context.mounted) Navigator.pop(context);
                   },
                 ),
               ],
@@ -172,7 +181,13 @@ class _HomeState extends State<Home> {
             actions: [
               TextButton(
                 onPressed: () {
-                  downloadPlaylist(tEC.value.text);
+                  setState(() {
+                    currentlyDownloading = true;
+                  });
+                  downloadPlaylist(tEC.value.text).then((value) => setState(() {
+                    currentlyDownloading = false;
+                  }));
+                  
                   Navigator.of(context).pop();
                 },
                 child: const Text('Submit'),
@@ -191,12 +206,31 @@ class _HomeState extends State<Home> {
   Future<void> downloadPlaylist(String value) async {
     var playlist = await YoutubeExplode().playlists.get(value);
     var playlistName = playlist.title;
-    await for (var video
-    in YoutubeExplode().playlists.getVideos(playlist.id)) {
-      downloadLink(video.url, playlist: playlistName);
-    }
-    if (context.mounted) Navigator.pop(context);
+
+    var videos = YoutubeExplode().playlists.getVideos(playlist.id);
+    var videosList = await videos.toList();
+
+    int totalVideos = videosList.length;
+    int currentVideo = 0;
+
+    // List to store all download futures
+    List<Future<void>> downloadFutures = [];
+
+    await Future.forEach(videosList, (video) {
+      currentVideo++;
+      downloadFutures.add(downloadLink(video.url, playlist: playlistName));
+    });
+
+    // Wait for all downloads to complete
+    await Future.wait(downloadFutures);
+
+    // Reset download status
+    setState(() {
+      currentlyDownloading = false;
+      downloadProgress = 0.0;
+    });
   }
+
 
   Future<void> downloadLink(String url, {String playlist = "Youtube"}) async {
     var client = YoutubeExplode();
@@ -222,6 +256,7 @@ class _HomeState extends State<Home> {
     await fileStream.close();
     client.close();
   }
+
 
   Future<void> scanLibrary() async {
     final files = await widget.database.query('files');
@@ -376,8 +411,22 @@ class _HomeState extends State<Home> {
             tooltip: 'Batch Edit',
           ),
         ],
-        title: const Text('Audio Player',
-            style: TextStyle(color: Colors.white, fontSize: 20)),
+        title: Row(
+          children: [
+            const Text('Audio Player',
+                style: TextStyle(color: Colors.white, fontSize: 20)),
+            const SizedBox( width: 10,),
+            if (currentlyDownloading)
+              SizedBox(
+                width: MediaQuery.of(context).size.width * 0.2,
+                child: LinearProgressIndicator(
+                  value: downloadProgress,
+                )
+              )
+            else
+              const SizedBox.shrink(),
+          ],
+        ),
       ),
       body: Column(
         children: [
