@@ -5,7 +5,7 @@ import 'package:path/path.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import 'package:http/http.dart' as http;
 
-Future<dynamic> downloadLink(String url, String dlDir,
+Future<dynamic> downloadLink(String url, String dlDir, dynamic apiKeys,
     {String playlist = "Youtube"}) async {
   var client = YoutubeExplode();
   var video = await client.videos.get(url);
@@ -22,7 +22,7 @@ Future<dynamic> downloadLink(String url, String dlDir,
   var fileStream = file.openWrite();
   await stream.pipe(fileStream);
 
-  var searchResult = await search("${video.title} - $noTopicAuthor");
+  var searchResult = await search("${video.title} - $noTopicAuthor", apiKeys);
   var result = {
     'name': video.title,
     'artist': noTopicAuthor,

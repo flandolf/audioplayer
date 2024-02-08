@@ -1,20 +1,15 @@
 PODS:
   - FlutterMacOS (1.0.0)
-  - FMDB (2.7.5):
-    - FMDB/standard (= 2.7.5)
-  - FMDB/standard (2.7.5)
   - media_kit_libs_macos_audio (1.0.4):
     - FlutterMacOS
   - media_kit_native_event_loop (1.0.0):
     - FlutterMacOS
+  - metadata_god (0.0.1)
   - screen_retriever (0.0.1):
     - FlutterMacOS
   - shared_preferences_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
-  - sqflite (0.0.2):
-    - FlutterMacOS
-    - FMDB (>= 2.7.5)
   - window_manager (0.2.0):
     - FlutterMacOS
 
@@ -22,14 +17,10 @@ DEPENDENCIES:
   - FlutterMacOS (from `Flutter/ephemeral`)
   - media_kit_libs_macos_audio (from `Flutter/ephemeral/.symlinks/plugins/media_kit_libs_macos_audio/macos`)
   - media_kit_native_event_loop (from `Flutter/ephemeral/.symlinks/plugins/media_kit_native_event_loop/macos`)
+  - metadata_god (from `Flutter/ephemeral/.symlinks/plugins/metadata_god/macos`)
   - screen_retriever (from `Flutter/ephemeral/.symlinks/plugins/screen_retriever/macos`)
   - shared_preferences_foundation (from `Flutter/ephemeral/.symlinks/plugins/shared_preferences_foundation/darwin`)
-  - sqflite (from `Flutter/ephemeral/.symlinks/plugins/sqflite/macos`)
   - window_manager (from `Flutter/ephemeral/.symlinks/plugins/window_manager/macos`)
-
-SPEC REPOS:
-  trunk:
-    - FMDB
 
 EXTERNAL SOURCES:
   FlutterMacOS:
@@ -38,23 +29,22 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/media_kit_libs_macos_audio/macos
   media_kit_native_event_loop:
     :path: Flutter/ephemeral/.symlinks/plugins/media_kit_native_event_loop/macos
+  metadata_god:
+    :path: Flutter/ephemeral/.symlinks/plugins/metadata_god/macos
   screen_retriever:
     :path: Flutter/ephemeral/.symlinks/plugins/screen_retriever/macos
   shared_preferences_foundation:
     :path: Flutter/ephemeral/.symlinks/plugins/shared_preferences_foundation/darwin
-  sqflite:
-    :path: Flutter/ephemeral/.symlinks/plugins/sqflite/macos
   window_manager:
     :path: Flutter/ephemeral/.symlinks/plugins/window_manager/macos
 
 SPEC CHECKSUMS:
   FlutterMacOS: 8f6f14fa908a6fb3fba0cd85dbd81ec4b251fb24
-  FMDB: 2ce00b547f966261cd18927a3ddb07cb6f3db82a
   media_kit_libs_macos_audio: 3871782a4f3f84c77f04d7666c87800a781c24da
   media_kit_native_event_loop: 61a206094f3faa8860f73edfc61b66c4969cb7b5
+  metadata_god: eceae399d0020475069a5cebc35943ce8562b5d7
   screen_retriever: 59634572a57080243dd1bf715e55b6c54f241a38
   shared_preferences_foundation: b4c3b4cddf1c21f02770737f147a3f5da9d39695
-  sqflite: d0307f984e859ce2bd39b230d672a448ea3f47b4
   window_manager: dd384738e139c59c4ec92d109cf52f6f5fbfd743
 
 PODFILE CHECKSUM: 236401fc2c932af29a9fcf0e97baeeb2d750d367

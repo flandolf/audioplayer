@@ -7,7 +7,7 @@ import 'package:metadata_god/metadata_god.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
 import '../main.dart';
@@ -28,16 +28,17 @@ class _HomeState extends State<Home> {
   bool batchEdit = false;
   Map<String, bool> selectedFiles = {};
   bool currentlyDownloading = false;
-  double downloadProgress = 0;
 
   @override
   void initState() {
     super.initState();
     loadProviders();
     updatePlaylist();
+    scanLibrary();
   }
 
   Future<void> loadProviders() async {
+    print(await getDatabasesPath());
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final String? directory = prefs.getString('directory');
     final int? seedColor = prefs.getInt('seedColor');
@@ -84,19 +85,13 @@ class _HomeState extends State<Home> {
       final files = value.files;
       for (final file in files) {
         final path = file.path!;
-        if (path.endsWith('.mp3') ||
-            path.endsWith('.m4a') ||
-            path.endsWith('.flac')) {
-          Metadata metadata = await MetadataGod.readMetadata(file: path);
-          await addToDB({
-            'name': metadata.title ?? p.basename(path),
-            'path': path,
-            'artist': metadata.artist ?? 'Unknown',
-            'album': metadata.album ?? 'Unknown',
-          });
-        } else {
-          return;
-        }
+        Metadata metadata = await MetadataGod.readMetadata(file: path);
+        await addToDB({
+          'name': metadata.title ?? p.basename(path),
+          'path': path,
+          'artist': metadata.artist ?? 'Unknown',
+          'album': metadata.album ?? 'Unknown',
+        });
       }
 
       updatePlaylist();
@@ -109,18 +104,20 @@ class _HomeState extends State<Home> {
     FilePicker.platform.getDirectoryPath().then((value) async {
       if (value == null) return;
       final directory = Directory(value);
-      final files = directory.listSync(recursive: true);
+      final files = directory.listSync(recursive: false);
       for (final file in files) {
-        if (file is File) {
-          final path = file.path;
-          Metadata metadata = await MetadataGod.readMetadata(file: path);
-          await addToDB({
-            'name': metadata.title ?? p.basename(path),
-            'path': path,
-            'artist': metadata.artist ?? 'Unknown',
-            'album': metadata.album ?? 'Unknown',
-          });
-        }
+        final path = file.path;
+        if (!path.endsWith("mp3") ||
+            !path.endsWith("m4a") ||
+            !path.endsWith("flac")) return;
+        print("Path: $path");
+        Metadata metadata = await MetadataGod.readMetadata(file: path);
+        await addToDB({
+          'name': metadata.title ?? p.basename(path),
+          'path': path,
+          'artist': metadata.artist ?? 'Unknown',
+          'album': metadata.album ?? 'Unknown',
+        });
       }
 
       updatePlaylist();
@@ -149,7 +146,15 @@ class _HomeState extends State<Home> {
                     var result = await downloadLink(
                         value,
                         Provider.of<MainProvider>(context, listen: false)
-                            .dlMusicDir);
+                            .dlMusicDir,
+                        {
+                          'client_id':
+                              Provider.of<MainProvider>(context, listen: false)
+                                  .spotifyClientId,
+                          'client_secret':
+                              Provider.of<MainProvider>(context, listen: false)
+                                  .spotifyClientSecret,
+                        });
                     await addToDB(result);
                     updatePlaylist();
                     if (context.mounted) Navigator.pop(context);
@@ -163,7 +168,15 @@ class _HomeState extends State<Home> {
                   var result = await downloadLink(
                       tEC.value.text,
                       Provider.of<MainProvider>(context, listen: false)
-                          .dlMusicDir);
+                          .dlMusicDir,
+                      {
+                        'client_id':
+                            Provider.of<MainProvider>(context, listen: false)
+                                .spotifyClientId,
+                        'client_secret':
+                            Provider.of<MainProvider>(context, listen: false)
+                                .spotifyClientSecret,
+                      });
                   await addToDB(result);
                   updatePlaylist();
                   if (context.mounted) Navigator.of(context).pop();
@@ -203,7 +216,7 @@ class _HomeState extends State<Home> {
                     setState(() {
                       currentlyDownloading = true;
                     });
-                    downloadPlaylist(tEC.value.text);
+                    await downloadPlaylist(tEC.value.text);
                     setState(() {
                       currentlyDownloading = false;
                     });
@@ -214,15 +227,18 @@ class _HomeState extends State<Home> {
             ),
             actions: [
               TextButton(
-                onPressed: () {
+                onPressed: () async {
                   setState(() {
                     currentlyDownloading = true;
                   });
-                  downloadPlaylist(tEC.value.text).then((value) => setState(() {
-                        currentlyDownloading = false;
-                      }));
-
-                  Navigator.of(context).pop();
+                  await downloadPlaylist(tEC.value.text)
+                      .then((value) => setState(() {
+                            currentlyDownloading = false;
+                          }));
+                  setState(() {
+                    currentlyDownloading = false;
+                  });
+                  if (context.mounted) Navigator.of(context).pop();
                 },
                 child: const Text('Submit'),
               ),
@@ -243,22 +259,17 @@ class _HomeState extends State<Home> {
 
     var videos = YoutubeExplode().playlists.getVideos(playlist.id);
     var videosList = await videos.toList();
-    List<Future<void>> downloadFutures = [];
-
-    await Future.forEach(videosList, (video) {
-      downloadFutures.add(downloadLink(video.url,
-          Provider.of<MainProvider>(context, listen: false).dlMusicDir,
-          playlist: playlistName));
-    });
-
-    // Wait for all downloads to complete
-    await Future.wait(downloadFutures);
+    for (var video in videosList) {
+      downloadLink(video.url,
+          Provider.of<MainProvider>(context, listen: false).dlMusicDir, {
+        'client_id':
+            Provider.of<MainProvider>(context, listen: false).spotifyClientId,
+        'client_secret': Provider.of<MainProvider>(context, listen: false)
+            .spotifyClientSecret,
+        playlist: playlistName,
+      });
+    }
     updatePlaylist();
-    // Reset download status
-    setState(() {
-      currentlyDownloading = false;
-      downloadProgress = 0;
-    });
   }
 
   Future<void> scanLibrary() async {
@@ -483,7 +494,23 @@ class _HomeState extends State<Home> {
                               batchEditDialog(context);
                               setState(() {});
                             },
-                            child: const Text("Edit"))
+                            child: const Text("Edit")),
+                        const SizedBox(
+                          width: 10,
+                        ),
+                        FilledButton(
+                            onPressed: () {
+                              for (var element in selectedFiles.keys) {
+                                widget.database.delete(
+                                  'files',
+                                  where: 'path = ?',
+                                  whereArgs: [element],
+                                );
+                                File(element).deleteSync();
+                              }
+                              setState(() {});
+                            },
+                            child: const Text("Delete"))
                       ],
                     );
                   }

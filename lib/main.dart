@@ -86,7 +86,9 @@ class MainProvider extends ChangeNotifier {
   bool _isDarkMode = true;
   Color _seedColor = sC;
   String _dlMusicDir = "";
-  Duration sleepTimerDuration = const Duration(hours: 1);
+  Duration _sleepTimerDuration = const Duration(hours: 1);
+  String _spotifyClientId = "";
+  String _spotifyClientSecret = "";
 
   bool get isDarkMode => _isDarkMode;
 
@@ -94,7 +96,21 @@ class MainProvider extends ChangeNotifier {
 
   String get dlMusicDir => _dlMusicDir;
 
-  Duration get sleepTimer => sleepTimerDuration;
+  Duration get sleepTimer => _sleepTimerDuration;
+
+  String get spotifyClientId => _spotifyClientId;
+
+  String get spotifyClientSecret => _spotifyClientSecret;
+
+  set spotifyClientId(String id) {
+    _spotifyClientId = id;
+    notifyListeners();
+  }
+
+  set spotifyClientSecret(String secret) {
+    _spotifyClientSecret = secret;
+    notifyListeners();
+  }
 
   set dlMusicDir(String dir) {
     _dlMusicDir = dir;
@@ -102,7 +118,7 @@ class MainProvider extends ChangeNotifier {
   }
 
   set sleepTimer(Duration duration) {
-    sleepTimerDuration = duration;
+    _sleepTimerDuration = duration;
     notifyListeners();
   }
 

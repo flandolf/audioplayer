@@ -1,14 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:async'; // Import the async library
-
-import 'package:audioplayer/services/secrets.dart';
 import 'package:http/http.dart' as http;
 
 String? accessToken;
 DateTime? tokenExpirationTime;
 
-Future<String> getAccessToken() async {
+Future<String> getAccessToken(dynamic apiKeys) async {
   if (accessToken != null && tokenExpirationTime != null && DateTime.now().isBefore(tokenExpirationTime!)) {
     return accessToken!;
   }
@@ -16,8 +14,8 @@ Future<String> getAccessToken() async {
   var url = Uri.https('accounts.spotify.com', '/api/token');
   var res = await http.post(url, body: {
     'grant_type': 'client_credentials',
-    'client_id': clientId,
-    'client_secret': clientSecret,
+    'client_id': apiKeys['client_id'],
+    'client_secret': apiKeys['client_secret'],
   });
 
   var jsonRes = jsonDecode(res.body);
@@ -28,8 +26,8 @@ Future<String> getAccessToken() async {
   return accessToken!;
 }
 
-Future<dynamic>search(String query) async {
-  String token = await getAccessToken();
+Future<dynamic>search(String query, dynamic apiKeys) async {
+  String token = await getAccessToken(apiKeys);
   var url = Uri.https('api.spotify.com', '/v1/search', {
     'q': query,
     'type': 'track',

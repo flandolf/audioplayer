@@ -4,7 +4,7 @@ import 'package:flutter_material_color_picker/flutter_material_color_picker.dart
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import '../main.dart';
 
@@ -16,29 +16,35 @@ class Settings extends StatefulWidget {
 }
 
 class _SettingsState extends State<Settings> {
-  final TextEditingController _controller = TextEditingController();
-
+  final diC = TextEditingController();
+  final ciC = TextEditingController();
+  final csC = TextEditingController();
+  
   @override
   void initState() {
     super.initState();
     getDirectory();
+    loadProviders();
   }
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+  String directory = '';
 
   Future<void> getDirectory() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
-    final String? directory = prefs.getString('directory');
-    if (directory != null) {
-      _controller.text = directory;
-      if (context.mounted) {
-        Provider.of<MainProvider>(context, listen: false).dlMusicDir =
-            directory;
-      }
+    directory = prefs.getString('directory')!;
+    diC.text = directory;
+    if (context.mounted) {
+      Provider.of<MainProvider>(context, listen: false).dlMusicDir = directory;
+    }
+  }
+
+  Future<void> loadProviders() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final String? clientId = prefs.getString('client_id');
+    final String? clientSecret = prefs.getString('client_secret');
+    if (clientId != null && clientSecret != null && context.mounted) {
+      Provider.of<MainProvider>(context, listen: false).spotifyClientId = clientId;
+      Provider.of<MainProvider>(context, listen: false).spotifyClientSecret = clientSecret;
     }
   }
 
@@ -135,7 +141,7 @@ class _SettingsState extends State<Settings> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
-                  controller: _controller,
+                  controller: diC,
                   decoration: const InputDecoration(
                     labelText: 'Directory',
                   ),
@@ -145,7 +151,10 @@ class _SettingsState extends State<Settings> {
                     onPressed: () async {
                       FilePicker.platform.getDirectoryPath().then((value) {
                         if (value != null) {
-                          _controller.text = value;
+                          diC.text = value;
+                          setState(() {
+                            directory = value;
+                          });
                         }
                       });
                     },
@@ -162,7 +171,56 @@ class _SettingsState extends State<Settings> {
               TextButton(
                 child: const Text('OK'),
                 onPressed: () async {
-                  await saveDirectory(_controller.text);
+                  await saveDirectory(diC.text);
+                  if (context.mounted) Navigator.of(context).pop();
+                },
+              ),
+            ],
+          );
+        });
+  }
+
+  Future<void> setSpotifyAPIKeys(BuildContext context) async {
+
+    showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Spotify API Keys'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: ciC,
+                  decoration: const InputDecoration(
+                    labelText: 'Client ID',
+                  ),
+                ),
+                TextField(
+                  controller: csC,
+                  decoration: const InputDecoration(
+                    labelText: 'Client Secret',
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                child: const Text('Cancel'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+              TextButton(
+                child: const Text('OK'),
+                onPressed: () async {
+                  final SharedPreferences prefs = await SharedPreferences.getInstance();
+                  prefs.setString('client_id', ciC.text);
+                  prefs.setString('client_secret', csC.text);
+                  if (!context.mounted) return;
+                  Provider.of<MainProvider>(context, listen: false).spotifyClientId = ciC.text;
+                  Provider.of<MainProvider>(context, listen: false).spotifyClientSecret = csC.text;
+
                   if (context.mounted) Navigator.of(context).pop();
                 },
               ),
@@ -247,6 +305,15 @@ class _SettingsState extends State<Settings> {
                 icon: const Icon(Icons.edit),
                 onPressed: () {
                   setDownloadedMusicDirectory(context);
+                },
+              ),
+            ),
+            ListTile(
+              title: const Text('Spotify API Keys'),
+              trailing: IconButton(
+                icon: const Icon(Icons.music_note),
+                onPressed: () {
+                  setSpotifyAPIKeys(context);
                 },
               ),
             ),
