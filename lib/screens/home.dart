@@ -106,27 +106,25 @@ class _HomeState extends State<Home> {
       final directory = Directory(value);
       final files = directory.listSync(recursive: false);
       for (final file in files) {
-        final path = file.path;
-        if (!path.endsWith("mp3") ||
-            !path.endsWith("m4a") ||
-            !path.endsWith("flac")) return;
-        print("Path: $path");
-        Metadata metadata = await MetadataGod.readMetadata(file: path);
-        await addToDB({
-          'name': metadata.title ?? p.basename(path),
-          'path': path,
-          'artist': metadata.artist ?? 'Unknown',
-          'album': metadata.album ?? 'Unknown',
-        });
+        if (file.path.endsWith("mp3") ||
+            file.path.endsWith("m4a") ||
+            file.path.endsWith("flac")) {
+          Metadata metadata = await MetadataGod.readMetadata(file: file.path);
+          await addToDB({
+            'name': metadata.title ?? p.basename(file.path),
+            'path': file.path,
+            'artist': metadata.artist ?? 'Unknown',
+            'album': metadata.album ?? 'Unknown',
+          });
+        }
       }
-
       updatePlaylist();
       setState(() {});
     });
   }
 
   Future<void> addUrl(BuildContext context) async {
-    final tEC = TextEditingController();
+    final textEditingController = TextEditingController();
     await showDialog<String>(
       context: context,
       builder: (context) {
@@ -137,7 +135,7 @@ class _HomeState extends State<Home> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
-                  controller: tEC,
+                  controller: textEditingController,
                   decoration: const InputDecoration(
                     border: UnderlineInputBorder(),
                     labelText: 'URL',
@@ -166,7 +164,7 @@ class _HomeState extends State<Home> {
               TextButton(
                 onPressed: () async {
                   var result = await downloadLink(
-                      tEC.value.text,
+                      textEditingController.value.text,
                       Provider.of<MainProvider>(context, listen: false)
                           .dlMusicDir,
                       {

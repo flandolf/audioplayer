@@ -81,15 +81,22 @@ class _PlayerWidgetState extends State<PlayerWidget> {
 
     final List<String> tokens = [];
     if (days != 0) {
-      tokens.add('${days}d');
+      tokens.add('$days');
     }
     if (tokens.isNotEmpty || hours != 0) {
-      tokens.add('${hours}h');
+      tokens.add('$hours');
     }
     if (tokens.isNotEmpty || minutes != 0) {
-      tokens.add('${minutes}m');
+      tokens.add('$minutes');
+    } else {
+      tokens.add('0');
     }
-    tokens.add('${seconds}s');
+
+    if (seconds.toString().length == 1) {
+      tokens.add('0$seconds');
+    } else {
+      tokens.add('$seconds');
+    }
 
     return tokens.join(':');
   }
@@ -112,7 +119,6 @@ class _PlayerWidgetState extends State<PlayerWidget> {
 
               Duration position = snapshot.data ?? Duration.zero;
 
-              // Ensure that the position is not negative
               position = Duration(
                   milliseconds: position.inMilliseconds
                       .clamp(0, player.state.duration.inMilliseconds));
@@ -134,7 +140,6 @@ class _PlayerWidgetState extends State<PlayerWidget> {
                           onChanged: (value) {},
                           onChangeEnd: (value) {
                             player.seek(Duration(milliseconds: value.toInt()));
-                            setState(() {});
                           },
                         ),
                       ),
@@ -184,7 +189,6 @@ class _PlayerWidgetState extends State<PlayerWidget> {
                             icon: const Icon(Icons.skip_previous),
                             onPressed: () {
                               player.previous();
-                              setState(() {});
                             },
                           ),
                           StreamBuilder(
@@ -204,7 +208,6 @@ class _PlayerWidgetState extends State<PlayerWidget> {
                                     } else {
                                       player.play();
                                     }
-                                    setState(() {});
                                   },
                                 );
                               }),
@@ -224,7 +227,6 @@ class _PlayerWidgetState extends State<PlayerWidget> {
                               player.state.rate == 1
                                   ? player.setRate(1.5)
                                   : player.setRate(1);
-                              setState(() {});
                             },
                             icon: const Icon(Icons.speed),
                           ),

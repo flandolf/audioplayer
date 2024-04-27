@@ -72,6 +72,7 @@ class MyApp extends StatelessWidget {
       routes: {
         '/settings': (context) => const Settings(),
         '/home': (context) => Home(database),
+        '/onboarding': (context) => OnboardingPage(database)
       },
       home: onboarding
           ? OnboardingPage(database)
