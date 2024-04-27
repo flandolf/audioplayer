@@ -11,6 +11,13 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v3
+      - name: Generate version
+        id: parse_version
+        run: |
+          COMMIT_NUM=$(git rev-list --count HEAD)
+          VERSION=$(echo "$COMMIT_NUM + 200 + 10000" | bc)
+          echo "Generated Version: $VERSION"
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
       - uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
@@ -20,3 +27,9 @@ jobs:
         with:
           name: windows
           path: build/windows/x64/runner/Release
+      - name: Upload Artifact
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ steps.parse_version.outputs.VERSION }}
+          artifacts: 'build/windows/x64/runner/Release/**'
+          token: ${{ secrets.GITHUB_TOKEN }}
