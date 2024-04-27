@@ -113,16 +113,11 @@ class _PlayerWidgetState extends State<PlayerWidget> {
           StreamBuilder(
             stream: player.stream.position,
             builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const CircularProgressIndicator();
-              }
-
+              if (snapshot.connectionState == ConnectionState.waiting) return const CircularProgressIndicator();
               Duration position = snapshot.data ?? Duration.zero;
-
               position = Duration(
                   milliseconds: position.inMilliseconds
                       .clamp(0, player.state.duration.inMilliseconds));
-
               return Column(
                 children: [
                   Text(nowPlayingName, style: const TextStyle(fontSize: 20)),
@@ -175,26 +170,19 @@ class _PlayerWidgetState extends State<PlayerWidget> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          // IconButton(
-                          //   onPressed: () {
-                          //     setState(() {
-                          //       isShuffle = !isShuffle;
-                          //     });
-                          //   },
-                          //   icon: Icon(
-                          //     isShuffle? Icons.shuffle_on : Icons.shuffle,
-                          //   ),
-                          // ),
                           IconButton(
                             icon: const Icon(Icons.skip_previous),
                             onPressed: () {
                               player.previous();
                             },
                           ),
+                          const SizedBox(
+                            width: 10,
+                          ),
                           StreamBuilder(
                               stream: player.stream.playing,
                               builder: (context, snapshot) {
-                                return IconButton(
+                                return IconButton.filled(
                                   icon: Icon(
                                     player.state.playing
                                         ? Icons.pause
@@ -211,6 +199,9 @@ class _PlayerWidgetState extends State<PlayerWidget> {
                                   },
                                 );
                               }),
+                          const SizedBox(
+                            width: 10,
+                          ),
                           IconButton(
                             icon: const Icon(Icons.skip_next),
                             onPressed: () {

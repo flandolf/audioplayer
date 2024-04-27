@@ -1,7 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import '../main.dart';
@@ -47,13 +46,10 @@ class _OnboardingPageState extends State<OnboardingPage> {
                 onPressed: () async {
                   Provider.of<MainProvider>(context, listen: false).dlMusicDir =
                       (await FilePicker.platform.getDirectoryPath())!;
-                  final SharedPreferences prefs =
-                      await SharedPreferences.getInstance();
-                  if (!context.mounted) return;
-                  prefs.setString(
-                      'directory',
-                      Provider.of<MainProvider>(context, listen: false)
-                          .dlMusicDir);
+                  if (context.mounted) {
+                    widget.database.execute(
+                        'INSERT INTO settings(key, value) VALUES("dlMusicDir", "${Provider.of<MainProvider>(context, listen: false).dlMusicDir}")');
+                  }
                 },
                 child: const Text('Select Directory'),
               ),

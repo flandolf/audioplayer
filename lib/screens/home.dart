@@ -6,7 +6,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:metadata_god/metadata_god.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
@@ -38,16 +37,38 @@ class _HomeState extends State<Home> {
   }
 
   Future<void> loadProviders() async {
-    print(await getDatabasesPath());
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    final String? directory = prefs.getString('directory');
-    final int? seedColor = prefs.getInt('seedColor');
-    if (directory != null && seedColor != null && context.mounted) {
-      Provider.of<MainProvider>(context, listen: false).dlMusicDir = directory;
-      Provider.of<MainProvider>(context, listen: false).seedColor =
-          Color(seedColor);
-      Provider.of<MainProvider>(context, listen: false).isDarkMode =
-          prefs.getBool('isDarkMode') ?? false;
+    final String directory = await widget.database
+        .query('settings', where: 'key = ?', whereArgs: ['dlMusicDir']).then(
+            (value) => value[0]['value'].toString());
+    final int darkMode = await widget.database
+        .query('settings', where: 'key = ?', whereArgs: ['darkMode']).then(
+            (value) => int.parse(value[0]['value'].toString()));
+    final int seedColor = await widget.database
+        .query('settings', where: 'key = ?', whereArgs: ['seedColor']).then(
+            (value) => int.parse(value[0]['value'].toString()));
+    final String spotifyClientId = await widget.database.query('settings',
+        where: 'key = ?',
+        whereArgs: [
+          'spotifyClientId'
+        ]).then((value) => value[0]['value'].toString());
+    final String spotifyClientSecret = await widget.database.query('settings',
+        where: 'key = ?',
+        whereArgs: [
+          'spotifyClientSecret'
+        ]).then((value) => value[0]['value'].toString());
+    if (context.mounted && directory.isNotEmpty) {
+      BuildContext c = context;
+      Provider.of<MainProvider>(c, listen: false).dlMusicDir = directory;
+      if (darkMode == 1) {
+        Provider.of<MainProvider>(c, listen: false).isDarkMode = true;
+      } else {
+        Provider.of<MainProvider>(c, listen: false).isDarkMode = false;
+      }
+      Provider.of<MainProvider>(c, listen: false).spotifyClientId =
+          spotifyClientId;
+      Provider.of<MainProvider>(c, listen: false).spotifyClientSecret =
+          spotifyClientSecret;
+      Provider.of<MainProvider>(c, listen: false).seedColor = Color(seedColor);
     }
   }
 
@@ -70,7 +91,6 @@ class _HomeState extends State<Home> {
       {'name': name, 'path': path, 'artist': artist, 'album': album},
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
-    print("Added $name to database");
   }
 
   Future<void> addFile() async {
@@ -258,14 +278,17 @@ class _HomeState extends State<Home> {
     var videos = YoutubeExplode().playlists.getVideos(playlist.id);
     var videosList = await videos.toList();
     for (var video in videosList) {
-      downloadLink(video.url,
-          Provider.of<MainProvider>(context, listen: false).dlMusicDir, {
-        'client_id':
-            Provider.of<MainProvider>(context, listen: false).spotifyClientId,
-        'client_secret': Provider.of<MainProvider>(context, listen: false)
-            .spotifyClientSecret,
-        playlist: playlistName,
-      });
+      if (context.mounted) {
+        BuildContext c = context;
+        downloadLink(
+            video.url, Provider.of<MainProvider>(c, listen: false).dlMusicDir, {
+          'client_id':
+              Provider.of<MainProvider>(c, listen: false).spotifyClientId,
+          'client_secret':
+              Provider.of<MainProvider>(c, listen: false).spotifyClientSecret,
+          playlist: playlistName,
+        }).then((value) => {addToDB(value)});
+      }
     }
     updatePlaylist();
   }
@@ -440,8 +463,7 @@ class _HomeState extends State<Home> {
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Audio Player',
-                style: TextStyle(color: Colors.white, fontSize: 20)),
+            const Text('Audio Player', style: TextStyle(fontSize: 20)),
             const SizedBox(
               width: 10,
             ),

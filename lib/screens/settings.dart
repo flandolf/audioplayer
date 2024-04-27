@@ -3,13 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_material_color_picker/flutter_material_color_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import '../main.dart';
 
 class Settings extends StatefulWidget {
-  const Settings({super.key});
+  final Database database;
+
+  const Settings(this.database, {super.key});
 
   @override
   State<Settings> createState() => _SettingsState();
@@ -19,41 +20,57 @@ class _SettingsState extends State<Settings> {
   final diC = TextEditingController();
   final ciC = TextEditingController();
   final csC = TextEditingController();
-  
+
   @override
   void initState() {
     super.initState();
-    getDirectory();
     loadProviders();
+    getDirectory();
   }
 
   String directory = '';
 
   Future<void> getDirectory() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    directory = prefs.getString('directory')!;
-    diC.text = directory;
-    if (context.mounted) {
-      Provider.of<MainProvider>(context, listen: false).dlMusicDir = directory;
-    }
+    widget.database.query('settings').then((value) {
+      for (final element in value) {
+        if (element['key'] == 'dlMusicDir') {
+          directory = element['value'].toString();
+          diC.text = directory;
+          if (context.mounted) {
+            Provider.of<MainProvider>(context, listen: false).dlMusicDir =
+                directory;
+          }
+        }
+      }
+    });
   }
 
   Future<void> loadProviders() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    final String? clientId = prefs.getString('client_id');
-    final String? clientSecret = prefs.getString('client_secret');
-    if (clientId != null && clientSecret != null && context.mounted) {
-      Provider.of<MainProvider>(context, listen: false).spotifyClientId = clientId;
-      Provider.of<MainProvider>(context, listen: false).spotifyClientSecret = clientSecret;
-    }
+    widget.database.query('settings').then((value) {
+      for (final element in value) {
+        if (element['key'] == 'spotifyClientId') {
+          ciC.text = element['value'].toString();
+          if (context.mounted) {
+            Provider.of<MainProvider>(context, listen: false).spotifyClientId =
+                ciC.text;
+          }
+        } else if (element['key'] == 'spotifyClientSecret') {
+          csC.text = element['value'].toString();
+          if (context.mounted) {
+            Provider.of<MainProvider>(context, listen: false)
+                .spotifyClientSecret = csC.text;
+          }
+        }
+      }
+    });
   }
 
   Future<void> saveDirectory(String directory) async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.setString('directory', directory);
     if (context.mounted) {
       Provider.of<MainProvider>(context, listen: false).dlMusicDir = directory;
     }
+    await widget.database.execute(
+        'INSERT INTO settings(key, value) VALUES("dlMusicDir", "$directory")');
   }
 
   Future<void> resetDatabase(BuildContext context) async {
@@ -78,6 +95,10 @@ class _SettingsState extends State<Settings> {
                   await database.execute('DROP TABLE files');
                   await database.execute(
                     'CREATE TABLE files(id INTEGER PRIMARY KEY, name TEXT, path TEXT, artist TEXT, album TEXT)',
+                  );
+                  await database.execute('DROP TABLE settings');
+                  await database.execute(
+                    'CREATE TABLE settings(id INTEGER PRIMARY KEY, key TEXT, value TEXT)',
                   );
 
                   if (context.mounted) {
@@ -181,7 +202,6 @@ class _SettingsState extends State<Settings> {
   }
 
   Future<void> setSpotifyAPIKeys(BuildContext context) async {
-
     showDialog(
         context: context,
         builder: (context) {
@@ -214,12 +234,16 @@ class _SettingsState extends State<Settings> {
               TextButton(
                 child: const Text('OK'),
                 onPressed: () async {
-                  final SharedPreferences prefs = await SharedPreferences.getInstance();
-                  prefs.setString('client_id', ciC.text);
-                  prefs.setString('client_secret', csC.text);
                   if (!context.mounted) return;
-                  Provider.of<MainProvider>(context, listen: false).spotifyClientId = ciC.text;
-                  Provider.of<MainProvider>(context, listen: false).spotifyClientSecret = csC.text;
+                  Provider.of<MainProvider>(context, listen: false)
+                      .spotifyClientId = ciC.text;
+                  Provider.of<MainProvider>(context, listen: false)
+                      .spotifyClientSecret = csC.text;
+
+                  await widget.database.execute(
+                      'INSERT INTO settings(key, value) VALUES("spotifyClientId", "${ciC.text}")');
+                  await widget.database.execute(
+                      'INSERT INTO settings(key, value) VALUES("spotifyClientSecret", "${csC.text}")');
 
                   if (context.mounted) Navigator.of(context).pop();
                 },
@@ -230,8 +254,8 @@ class _SettingsState extends State<Settings> {
   }
 
   Future<void> saveColor(Color color) async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.setInt('color', color.value);
+    widget.database.execute(
+        'INSERT INTO settings(key, value) VALUES("seedColor", "${color.value}")');
     if (context.mounted) {
       Provider.of<MainProvider>(context, listen: false).seedColor = color;
     }
@@ -250,6 +274,10 @@ class _SettingsState extends State<Settings> {
               trailing: Switch(
                 value: Provider.of<MainProvider>(context).isDarkMode,
                 onChanged: (bool value) {
+                  widget.database.execute(
+                      'DELETE FROM settings WHERE key = "darkMode"');
+                  widget.database.execute(
+                      'INSERT INTO settings(key, value) VALUES("darkMode", "${value ? 1 : 0}")');
                   Provider.of<MainProvider>(context, listen: false).isDarkMode =
                       value;
                 },

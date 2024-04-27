@@ -42,7 +42,19 @@ void main() async {
             db.execute(
               'CREATE TABLE files(id INTEGER PRIMARY KEY, name TEXT, path TEXT, artist TEXT, album TEXT)',
             );
+            db.execute(
+              'CREATE TABLE settings(id INTEGER PRIMARY KEY, key TEXT, value TEXT)',
+            );
           }));
+
+  await db.query('settings', where: 'key = ?', whereArgs: ['dlMusicDir']).then((value) {
+    if (value.isNotEmpty) {
+      onboarding = false;
+    } else {
+      onboarding = true;
+    }
+  });
+
 
   runApp(
     ChangeNotifierProvider(
@@ -70,7 +82,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       routes: {
-        '/settings': (context) => const Settings(),
+        '/settings': (context) => Settings(database),
         '/home': (context) => Home(database),
         '/onboarding': (context) => OnboardingPage(database)
       },
