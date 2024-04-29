@@ -3,6 +3,10 @@ name: Dart
 on:
   push:
     branches: [ "main" ]
+    paths:
+      - 'lib/**'
+      - 'pubspec.yaml'
+      - 'assets/**'
   pull_request:
     branches: [ "main" ]
 
