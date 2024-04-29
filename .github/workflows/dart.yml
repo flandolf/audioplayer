@@ -21,7 +21,7 @@ jobs:
       - run: flutter pub get
       - run: flutter build windows
       - name: 'Copy sqlite3.dll'
-        run: copy /Y .\assets\sqlite3.dll .\build\windows\x64\Release\
+        run: copy /Y "assets\sqlite3.dll" "build\windows\runner\Release"
       - uses: actions/upload-artifact@v4
         with:
           name: windows
