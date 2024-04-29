@@ -8,7 +8,6 @@ import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
-
 import '../main.dart';
 import '../services/youtubeservice.dart';
 
@@ -161,6 +160,15 @@ class _HomeState extends State<Home> {
                     labelText: 'URL',
                   ),
                   onSubmitted: (value) async {
+                    if (Provider.of(context, listen: false).spotifyClientId ==
+                            '' ||
+                        Provider.of(context, listen: false)
+                                .spotifyClientSecret ==
+                            '') {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                          content: Text('Spotify credentials not set')));
+                      return;
+                    }
                     var result = await downloadLink(
                         value,
                         Provider.of<MainProvider>(context, listen: false)

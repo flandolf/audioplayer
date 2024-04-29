@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:audioplayer/screens/home.dart';
 import 'package:audioplayer/screens/onboarding.dart';
 import 'package:audioplayer/screens/settings.dart';
@@ -31,10 +33,13 @@ void main() async {
 
   Database db;
 
-  sqfliteFfiInit();
+  if (Platform.isWindows || Platform.isLinux) {
+    sqfliteFfiInit();
+  }
+
   databaseFactory = databaseFactoryFfi;
   db = await databaseFactory.openDatabase(
-      join(await databaseFactoryFfi.getDatabasesPath(), 'audio_player.db'),
+      join(await databaseFactory.getDatabasesPath(), 'audio_player.db'),
       options: OpenDatabaseOptions(
           version: 1,
           onCreate: (db, version) async {
