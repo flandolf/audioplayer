@@ -10,12 +10,14 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
       - run: flutter pub get
       - run: flutter build windows
+      - name: 'Copy sqlite3.dll'
+        run: copy /Y .\assets\sqlite3.dll .\build\windows\x64\Release\
       - uses: actions/upload-artifact@v4
         with:
           name: windows

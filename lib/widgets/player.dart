@@ -89,7 +89,7 @@ class _PlayerWidgetState extends State<PlayerWidget> {
     if (tokens.isNotEmpty || minutes != 0) {
       tokens.add('$minutes');
     } else {
-      tokens.add('0');
+      tokens.add('00');
     }
 
     if (seconds.toString().length == 1) {
