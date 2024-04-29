@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:audioplayer/widgets/player.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:metadata_god/metadata_god.dart';
@@ -30,44 +31,37 @@ class _HomeState extends State<Home> {
   @override
   void initState() {
     super.initState();
-    loadProviders();
     updatePlaylist();
+    loadSettingsFromDB();
     scanLibrary();
   }
 
-  Future<void> loadProviders() async {
-    final String directory = await widget.database
-        .query('settings', where: 'key = ?', whereArgs: ['dlMusicDir']).then(
-            (value) => value[0]['value'].toString());
-    final int darkMode = await widget.database
-        .query('settings', where: 'key = ?', whereArgs: ['darkMode']).then(
-            (value) => int.parse(value[0]['value'].toString()));
-    final int seedColor = await widget.database
-        .query('settings', where: 'key = ?', whereArgs: ['seedColor']).then(
-            (value) => int.parse(value[0]['value'].toString()));
-    final String spotifyClientId = await widget.database.query('settings',
-        where: 'key = ?',
-        whereArgs: [
-          'spotifyClientId'
-        ]).then((value) => value[0]['value'].toString());
-    final String spotifyClientSecret = await widget.database.query('settings',
-        where: 'key = ?',
-        whereArgs: [
-          'spotifyClientSecret'
-        ]).then((value) => value[0]['value'].toString());
-    if (context.mounted && directory.isNotEmpty) {
-      BuildContext c = context;
-      Provider.of<MainProvider>(c, listen: false).dlMusicDir = directory;
-      if (darkMode == 1) {
-        Provider.of<MainProvider>(c, listen: false).isDarkMode = true;
-      } else {
-        Provider.of<MainProvider>(c, listen: false).isDarkMode = false;
+  void loadSettingsFromDB() {
+    try {
+      widget.database.query('settings').then((value) {
+        for (final element in value) {
+          if (element['key'] == 'spotifyClientId') {
+            Provider.of<MainProvider>(context, listen: false).spotifyClientId =
+                element['value'].toString();
+          } else if (element['key'] == 'spotifyClientSecret') {
+            Provider.of<MainProvider>(context, listen: false)
+                .spotifyClientSecret = element['value'].toString();
+          } else if (element['key'] == 'dlMusicDir') {
+            Provider.of<MainProvider>(context, listen: false).dlMusicDir =
+                element['value'].toString();
+          } else if (element['key'] == 'accentColor') {
+            Provider.of<MainProvider>(context, listen: false).seedColor =
+                Color(int.parse(element['value'].toString()));
+          } else if (element['key'] == 'darkMode') {
+            Provider.of<MainProvider>(context, listen: false).isDarkMode =
+                element['value'].toString() == 'true';
+          }
+        }
+      });
+    } catch (e) {
+      if (kDebugMode) {
+        print(e);
       }
-      Provider.of<MainProvider>(c, listen: false).spotifyClientId =
-          spotifyClientId;
-      Provider.of<MainProvider>(c, listen: false).spotifyClientSecret =
-          spotifyClientSecret;
-      Provider.of<MainProvider>(c, listen: false).seedColor = Color(seedColor);
     }
   }
 

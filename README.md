@@ -20,7 +20,7 @@ Flutter audio player with YouTube download support.
 
 ## Build
 1. Run `flutter pub get`
-2. Run `flutter build` (macOS and Windows only)
+2. Run `flutter build` (tested for macOS and Windows only)
 
 ## Dependencies
 * window_manager
@@ -38,11 +38,9 @@ Flutter audio player with YouTube download support.
 ## To Do
 * [ ] Add support for more audio formats
 * [ ] Add working shuffle feature
-* [ ] Metadata support
+* [x] Metadata support
 * [ ] File Sorting (Artist, Album, etc.)
 
-## Bugs
-* [ ] Theme doesn't save across restarts
 
 ## Screenshots
 ![img.png](img.png)

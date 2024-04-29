@@ -24,7 +24,7 @@ class _SettingsState extends State<Settings> {
   @override
   void initState() {
     super.initState();
-    loadProviders();
+    getSpotifyCreds();
     getDirectory();
   }
 
@@ -45,7 +45,7 @@ class _SettingsState extends State<Settings> {
     });
   }
 
-  Future<void> loadProviders() async {
+  Future<void> getSpotifyCreds() async {
     widget.database.query('settings').then((value) {
       for (final element in value) {
         if (element['key'] == 'spotifyClientId') {
@@ -69,8 +69,9 @@ class _SettingsState extends State<Settings> {
     if (context.mounted) {
       Provider.of<MainProvider>(context, listen: false).dlMusicDir = directory;
     }
-    await widget.database.execute(
-        'INSERT INTO settings(key, value) VALUES("dlMusicDir", "$directory")');
+    await widget.database.delete('settings', where: 'key = "dlMusicDir"');
+    await widget.database
+        .insert('settings', {'key': 'dlMusicDir', 'value': directory});
   }
 
   Future<void> resetDatabase(BuildContext context) async {
@@ -103,6 +104,7 @@ class _SettingsState extends State<Settings> {
 
                   if (context.mounted) {
                     Navigator.of(context).pop();
+                    Navigator.of(context).pushNamed("/onboarding");
                   }
                 },
               ),
@@ -240,10 +242,21 @@ class _SettingsState extends State<Settings> {
                   Provider.of<MainProvider>(context, listen: false)
                       .spotifyClientSecret = csC.text;
 
-                  await widget.database.execute(
-                      'INSERT INTO settings(key, value) VALUES("spotifyClientId", "${ciC.text}")');
-                  await widget.database.execute(
-                      'INSERT INTO settings(key, value) VALUES("spotifyClientSecret", "${csC.text}")');
+                  // Save to database
+                  await widget.database
+                      .delete('settings', where: 'key = "spotifyClientId"');
+                  await widget.database
+                      .delete('settings', where: 'key = "spotifyClientSecret"');
+
+                  await widget.database.insert('settings', {
+                    'key': 'spotifyClientId',
+                    'value': ciC.text,
+                  });
+
+                  await widget.database.insert('settings', {
+                    'key': 'spotifyClientSecret',
+                    'value': csC.text,
+                  });
 
                   if (context.mounted) Navigator.of(context).pop();
                 },
@@ -254,10 +267,14 @@ class _SettingsState extends State<Settings> {
   }
 
   Future<void> saveColor(Color color) async {
-    widget.database.execute(
-        'INSERT INTO settings(key, value) VALUES("seedColor", "${color.value}")');
+    await widget.database.delete('settings', where: 'key = "accentColor"');
+    await widget.database.insert('settings', {
+      'key': 'accentColor',
+      'value': color.value.toString(),
+    });
     if (context.mounted) {
-      Provider.of<MainProvider>(context, listen: false).seedColor = color;
+      BuildContext c = context;
+      Provider.of<MainProvider>(c, listen: false).seedColor = color;
     }
   }
 
@@ -274,10 +291,11 @@ class _SettingsState extends State<Settings> {
               trailing: Switch(
                 value: Provider.of<MainProvider>(context).isDarkMode,
                 onChanged: (bool value) {
-                  widget.database.execute(
-                      'DELETE FROM settings WHERE key = "darkMode"');
-                  widget.database.execute(
-                      'INSERT INTO settings(key, value) VALUES("darkMode", "${value ? 1 : 0}")');
+                  widget.database.delete('settings', where: 'key = "darkMode"');
+                  widget.database.insert('settings', {
+                    'key': 'darkMode',
+                    'value': value ? 'true' : 'false',
+                  });
                   Provider.of<MainProvider>(context, listen: false).isDarkMode =
                       value;
                 },
@@ -351,6 +369,37 @@ class _SettingsState extends State<Settings> {
                 icon: const Icon(Icons.delete),
                 onPressed: () {
                   resetDatabase(context);
+                },
+              ),
+            ),
+            ListTile(
+              title: const Text('Read values from database'),
+              trailing: IconButton(
+                icon: const Icon(Icons.mark_chat_read_rounded),
+                onPressed: () {
+                  var data = [];
+                  widget.database.query('settings').then((value) {
+                    for (final element in value) {
+                      data.add(element);
+                    }
+                  });
+                  showDialog(
+                    context: context,
+                    builder: (context) {
+                      return AlertDialog(
+                        title: const Text('Values in database'),
+                        content: Text(data.toString()),
+                        actions: [
+                          TextButton(
+                            child: const Text('OK'),
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                            },
+                          ),
+                        ],
+                      );
+                    },
+                  );
                 },
               ),
             ),
