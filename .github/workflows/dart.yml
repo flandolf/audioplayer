@@ -7,8 +7,13 @@ on:
       - 'lib/**'
       - 'pubspec.yaml'
       - 'assets/**'
+      - '.github/workflows/dart.yml'
   pull_request:
     branches: [ "main" ]
+    paths:
+      - 'lib/**'
+      - 'pubspec.yaml'
+      - 'assets/**'
 
 jobs:
   build:
